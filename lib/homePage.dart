@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:namer_app/apps_routes.dart';
 
 import 'customButton.dart';
 import 'fileChoser.dart';
@@ -25,24 +26,30 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  Widget getVideoPlayerButton(context){
+  Widget getVideoPlayerButton(context) {
     return ElevatedButton(
-              onPressed: () async {
-                FilePicker.pickFile(context);
-              },
-              child: const Text('Открыть видеоплеер'),
-            );
+      onPressed: () async {
+        FilePicker.pickFile().then((_) {
+          Navigator.pushNamed(context, AppsRoutes.fileVideoPlayer);
+        });
+      },
+      child: const Text('Открыть видеоплеер'),
+    );
   }
 
-  Widget getRecordingsButton(context){
+  Widget getRecordingsButton(context) {
     return getCustomButton(context, 'Открыть видеозаписи', '/recordings');
   }
 
-  Widget getStreamVideoPlayerButton(context){
-    return getCustomButton(context, 'Открыть стриминговый плеер', '/streamVideoPlayer');
+  Widget getStreamVideoPlayerButton(context) {
+    return getCustomButton(
+      context,
+      'Открыть стриминговый плеер',
+      '/streamVideoPlayer',
+    );
   }
 
-  Widget getIndention(){
+  Widget getIndention() {
     return const SizedBox(height: 20);
   }
 }

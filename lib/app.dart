@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:namer_app/records.dart';
 
 import 'streamApp.dart';
 import 'homePage.dart';
 import 'recordingsApp.dart';
 import 'fileVideoApp.dart';
+import 'starting_select_page.dart';
+import 'apps_routes.dart';
 
 class App extends StatelessWidget {
   const App({super.key});
@@ -17,12 +20,16 @@ class App extends StatelessWidget {
           seedColor: const Color.fromARGB(255, 90, 6, 201),
         ),
       ),
-      initialRoute: '/',
+      initialRoute: AppsRoutes.startingScreen,
       routes: {
-        '/recordings': (context) => RecordingsApp(),
-        '/': (context) => const HomePage(),
-        '/fileVideoPlayer': (context) => const FileVideoApp(),
-        '/streamVideoPlayer': (context) => StreamPlayerApp(),
+        // '/recordings': (context) => RecordingsApp(),
+        AppsRoutes.projectSelect: (context) => StartingSelecetPage(),
+
+        // Video player with RecordData in arguments
+        AppsRoutes.fileVideoPlayer: (context) => FileVideoApp(
+          record: ModalRoute.of(context)!.settings.arguments as RecordData,
+        ),
+        // '/streamVideoPlayer': (context) => StreamPlayerApp(),
       },
     );
   }
