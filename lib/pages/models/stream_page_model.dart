@@ -153,10 +153,10 @@ class StreamPageModel with ChangeNotifier {
     await _controller.resumeVideoRecording();
     _isPaused = false;
     _sttSub = _python.listen().listen((t) {
-        if (t.trim().isEmpty) return;
-        _transcripts.add(t.trim);
-        notifyListeners();
-    })
+      if (t.trim().isEmpty) return;
+      _transcripts.add(t.trim());
+      notifyListeners();
+    });
     notifyListeners();
   }
 
@@ -177,6 +177,7 @@ class StreamPageModel with ChangeNotifier {
   }
 
   // Освобождение ресурсов
+  @override
   void dispose() {
     print('StreamPageModel disposed');
 
