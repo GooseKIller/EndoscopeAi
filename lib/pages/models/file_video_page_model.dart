@@ -27,6 +27,7 @@ class FileVideoPlayerPageStateModel {
   Duration totalDuration = Duration.zero;
   final List<ScreenshotPreviewModel> _shots = []; // список миниатюр
   late Directory _shotsDir; // директория …/screenshots
+  late Directory _recordingsDir;
   final PythonService _python = PythonService();
 
   bool get isPlaying => _isPlaying;
@@ -62,6 +63,10 @@ class FileVideoPlayerPageStateModel {
     _shotsDir = Directory('${base.path}/screenshots');
     if (!await _shotsDir.exists()) {
       await _shotsDir.create(recursive: true);
+    }
+    _recordingsDir = Directory('${base.path}/recordings');
+    if (!await _recordingsDir.exists()) {
+        await _recordingsDir.create(recursive: true);
     }
   }
 
@@ -136,11 +141,24 @@ class FileVideoPlayerPageStateModel {
 
   Future<String> analyzeVideo() async {
     final input = FilePicker.filePath!;
-    final out = p.join(p.dirname(input), 'annotated_\${p.basename(input)}');
+    final out = p.join(p.dirname(input), 'annotated_${p.basename(input)}');
     await _python.processVideo(input, out);
     return out;
   }
 
+  Future<String?> saveRecording() async {
+    if (!FilePicker.checkFile()) return null;
+    final src = FilePicker.filePath!;
+    var dest = p.join(_recordingsDir.path, p.basename(src));
+    if (await File(dest).exists()) {
+      final name =
+          '${DateTime.now().millisecondsSinceEpoch}_${p.basename(src)}';
+      dest = p.join(_recordingsDir.path, name);
+    }
+    await File(src).copy(dest);
+    return dest;
+  }
+  
   // смена состояния проигрывания
   void togglePlayPause() {
     setState(() {

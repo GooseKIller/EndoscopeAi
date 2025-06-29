@@ -34,6 +34,17 @@ class FileVidePlayerPageStateView {
         leading: BackButton(onPressed: () => Navigator.pop(context)),
         actions: [
           IconButton(
+            icon: const Icon(Icons.save),
+            onPressed: () async {
+              final path = await _model.saveRecording();
+              if (context.mounted && path != null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Saved: \${p.basename(path)}')),
+                );
+              }
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.bug_report),
             onPressed: () async {
               final out = await _model.analyzeVideo();

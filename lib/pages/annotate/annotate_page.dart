@@ -171,6 +171,11 @@ class _AnnotatePageState extends State<AnnotatePage> {
           ),
         ],
       ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _runAi,
+        icon: const Icon(Icons.bug_report),
+        label: const Text('AI анализ'),
+      ),
     );
   }
 

@@ -36,19 +36,6 @@ class _AiToolsPageState extends State<AiToolsPage> {
       _sttResult = text;
     });
   }
-
-  Future<void> _pickImageAndDetect() async {
-    final result = await FilePicker.platform.pickFiles(type: FileType.image);
-    if (result == null) return;
-    setState(() => _processingDetect = true);
-    final path = result.files.single.path!;
-    final detections = await _python.detectImage(path);
-    setState(() {
-      _processingDetect = false;
-      _detectResult = const JsonEncoder.withIndent('  ').convert(detections);
-    });
-  }
-
   Future<void> _pickVideoAndDetect() async {
     final result = await FilePicker.platform.pickFiles(type: FileType.video);
     if (result == null) return;
@@ -99,11 +86,6 @@ class _AiToolsPageState extends State<AiToolsPage> {
               const SizedBox(height: 8),
               Row(
                 children: [
-                  ElevatedButton(
-                    onPressed: _processingDetect ? null : _pickImageAndDetect,
-                    child: const Text('Анализ изображения'),
-                  ),
-                  const SizedBox(width: 10),
                   ElevatedButton(
                     onPressed: _processingDetect ? null : _pickVideoAndDetect,
                     child: const Text('Анализ видео'),

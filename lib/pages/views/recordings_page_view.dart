@@ -38,12 +38,12 @@ class RecordingsPageView {
                   itemCount: files.length,
                   itemBuilder: (context, i) {
                     final f = files[i];
-                    return ListTile(
-                      title: Text(p.basename(f.path)),
-                      onTap: () {
+                    return GestureDetector(
+                      onDoubleTap: () { 
                         FilePicker.open(f.path);
                         Navigator.pushNamed(context, Routes.fileVideoPlayer);
                       },
+                    child: ListTile(title: Text(p.basename(f.path))),
                     );
                   },
                 ),

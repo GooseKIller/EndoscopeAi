@@ -8,15 +8,17 @@ import 'dart:io';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:endoscopy_ai/shared/widget/screenshot_preview.dart';
 import 'package:endoscopy_ai/backend/python_service.dart';
+import 'package:endoscopy_ai/shared/camera/windows_camera_helper.dart';
 import 'package:path/path.dart' as p;
-import 'dart:io';
+
 
 class StreamPageModel with ChangeNotifier {
   final CameraDescription cameraDescription; // данные о камере
-  late CameraController _controller;
+  CameraController? _controller;
   bool _isInitialized = false; // инициализированная ли камера
   bool _cameraAvailable = true; // доступна ли камера
   final List<ScreenshotPreviewModel> _shots = []; // список миниатюр
@@ -26,15 +28,14 @@ class StreamPageModel with ChangeNotifier {
   StreamSubscription<String>? _sttSub;
   final List<String> _transcripts = [];
   bool _isRecording = false;
-  late final Directory _recordingsDir;
-
   bool get recording => _isRecording;
-  List<String> get transcripts => _transcripts;
+ 
+  late final Directory _recordingsDir;
 
   // Геттеры/сеттеры
   bool get isInitialized => _isInitialized;
   bool get cameraAvailable => _cameraAvailable; // Геттер для доступности камеры
-  CameraController get controller => _controller;
+  CameraController get controller => _controller!;
   List<ScreenshotPreviewModel> get shots => _shots;
 
   // `cameraDescription` -  данные о камере
@@ -44,21 +45,48 @@ class StreamPageModel with ChangeNotifier {
     _startCameraCheckTimer();
   }
 
-  // Инициализация контроллера камеры
+  // Инициализация контроллера камеры с Windows-специфичными фиксами
   Future<void> _initializeCamera() async {
     try {
-      _controller = CameraController(
+      // Полная очистка предыдущего контроллера
+      await WindowsCameraHelper.disposeCamera(_controller);
+      _controller = null;
+      
+      // Используем Windows-специфичный хелпер для инициализации
+      _controller = await WindowsCameraHelper.initializeCamera(
         cameraDescription,
-        ResolutionPreset.medium,
+        resolution: ResolutionPreset.medium,
         enableAudio: true,
       );
-
-      await _controller.initialize();
+      
       _isInitialized = true;
+      _cameraAvailable = true;
+      
+      // Уведомляем слушателей на главном потоке
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        notifyListeners();
+      });
+      
     } catch (e) {
+      final errorDescription = WindowsCameraHelper.getWindowsCameraErrorDescription(e);
+      
       if (kDebugMode) {
-        print('Error initializing camera: $e');
+        print('Error initializing camera: $errorDescription');
+        print('Original error: $e');
       }
+      
+      _isInitialized = false;
+      _cameraAvailable = false;
+      await WindowsCameraHelper.disposeCamera(_controller);
+      _controller = null;
+      
+      // Уведомляем слушателей на главном потоке
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        notifyListeners();
+      });
+      
+      // Переобертываем ошибку с понятным описанием
+      throw Exception(errorDescription);
     }
   }
 
@@ -103,7 +131,7 @@ class StreamPageModel with ChangeNotifier {
   Future<XFile?> takePicture() async {
     if (!_isInitialized) return null;
     try {
-      return await _controller.takePicture();
+      return await _controller!.takePicture();
     } catch (e) {
       if (kDebugMode) {
         print('Error taking picture: $e');
@@ -125,7 +153,7 @@ class StreamPageModel with ChangeNotifier {
 
   Future<void> startRecording() async {
     if (_isRecording || !_isInitialized) return;
-    await _controller.startVideoRecording();
+    await _controller!.startVideoRecording();
     _isRecording = true;
     _transcripts.clear();
     _sttSub = _python.listen().listen((t) {
@@ -136,33 +164,56 @@ class StreamPageModel with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<String?> stopRecording() async {
+  Future<String?> stopRecording({String? savePath}) async {
     if (!_isRecording) return null;
-    final file = await _controller.stopVideoRecording();
-    _isRecording = false;
-    _sttSub?.cancel();
-    _python.stopListening();
-    final out = p.join(
-      _recordingsDir.path,
-      '${DateTime.now().millisecondsSinceEpoch}.mp4',
-    );
-    await File(file.path).copy(out);
-    notifyListeners();
-    return out;
-  }
+    try {
+      final file = await _controller!.stopVideoRecording();
+      _isRecording = false;
+      _isPaused = false;
+      _sttSub?.cancel();
+      _python.stopListening();
 
-  // Освобождение ресурсов
+      final outFileName = '${DateTime.now().millisecondsSinceEpoch}.mp4';
+      final recordingsOut = p.join(_recordingsDir.path, outFileName);
+      await File(file.path).copy(recordingsOut); 
+      String finalPath = recordingsOut;
+      
+      if (savePath != null) {
+        await File(recordingsOut).copy(savePath);
+        finalPath = savePath;
+      }
+      notifyListeners();
+      return finalPath;
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error during stopRecording: $e');
+      }
+      return null;
+      }
+    }
+
+ // Освобождение ресурсов
+  @override
   void dispose() {
     print('StreamPageModel disposed');
 
     _sttSub?.cancel();
     _python.stopListening();
-
-    if (_controller.value.isRecordingVideo) {
-      _controller.stopVideoRecording();
-    }
-    _controller.dispose();
-    _isInitialized = false;
     _cameraCheckTimer?.cancel();
+
+    // Асинхронное освобождение ресурсов камеры
+    _disposeCamera();
+    
+    _isInitialized = false;
+    _isPaused = false;
+    _isRecording = false;
+    
+    super.dispose();
+  }
+  
+  // Безопасное освобождение ресурсов камеры
+  Future<void> _disposeCamera() async {
+    await WindowsCameraHelper.disposeCamera(_controller);
+    _controller = null;
   }
 }
