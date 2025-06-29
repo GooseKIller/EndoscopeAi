@@ -1,0 +1,66 @@
+# .github/workflows/flutter-ci.yml
+name: Flutter CI
+
+on:
+  push:
+    branches: [ main, deploy ]   # normal dev flow
+    tags:     [ 'MVPv*' ]                      # MVPv1.0.0 etc trigger release job
+  pull_request:
+
+jobs:
+# -------------------------------------------------------------
+  build-test:
+    runs-on: ubuntu-latest          # fast Linux runner
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.22.1'
+          channel: stable
+          cache: true
+
+      - name: Install pub deps
+        run: flutter pub get
+
+      - name: Lint (flutter analyze)
+        run: flutter analyze --no-pub
+
+      - name: Run unit tests
+        run: flutter test test/unit
+
+      - name: Run widget tests
+        run: flutter test test/widget
+
+# -------------------------------------------------------------
+  release-win:
+    if: startsWith(github.ref, 'refs/tags/MVPv')    # fires only on MVPv* tag
+    needs: build-test                            # run tests first
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.22.1'
+          channel: stable
+
+      - name: Install pub deps
+        run: flutter pub get
+
+      - name: Build Windows release
+        run: flutter build windows --release
+
+      - name: Strip symbols & zip
+        run: |
+          cd build/windows/runner/Release
+          Remove-Item *.pdb,*.ilk -Force
+          Compress-Archive -Path * -DestinationPath EndoscopeAI.zip
+
+      - name: Attach artefact to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/windows/runner/Release/EndoscopeAI.zip

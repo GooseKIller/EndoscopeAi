@@ -18,12 +18,7 @@ void main() {
     final model = FakeVideoPlayerModel(shots)
       ..totalDuration = const Duration(seconds: 10);
 
-    final markers = MarkersModel(
-      0,
-      0,
-      sliderKey: key,
-      modelVideoPlayer: model,
-    );
+    final markers = MarkersModel(0, 0, sliderKey: key, modelVideoPlayer: model);
 
     await tester.pumpWidget(
       Directionality(
@@ -36,7 +31,9 @@ void main() {
     final sliderWidth = box.size.width;
     final totalMs = model.totalDuration.inMilliseconds.toDouble();
     // Tap very close to the 8-second marker (within threshold)
-    final tapX = (Duration(seconds: 8, milliseconds: 50).inMilliseconds / totalMs) * sliderWidth;
+    final tapX =
+        (Duration(seconds: 8, milliseconds: 50).inMilliseconds / totalMs) *
+        sliderWidth;
     final global = box.localToGlobal(Offset(tapX, 1));
 
     markers.seekToMarker(TapDownDetails(globalPosition: global));

@@ -24,8 +24,8 @@ class FakeVideoPlayerController extends VideoPlayerController {
 
 class FakeVideoPlayerModel extends FileVideoPlayerPageStateModel {
   FakeVideoPlayerModel(this.shotsList)
-      : controllerFake = FakeVideoPlayerController(),
-        super(() {});
+    : controllerFake = FakeVideoPlayerController(),
+      super(() {});
 
   final FakeVideoPlayerController controllerFake;
   final List<ScreenshotPreviewModel> shotsList;
@@ -59,12 +59,7 @@ void main() {
     final model = FakeVideoPlayerModel([shot])
       ..totalDuration = const Duration(seconds: 10);
 
-    final markers = MarkersModel(
-      0,
-      0,
-      sliderKey: key,
-      modelVideoPlayer: model,
-    );
+    final markers = MarkersModel(0, 0, sliderKey: key, modelVideoPlayer: model);
 
     await tester.pumpWidget(
       Directionality(
