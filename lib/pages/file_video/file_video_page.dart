@@ -11,24 +11,28 @@ import 'package:path/path.dart' as p;
 
 // Страница с воспроизведением видео с файла
 class FileVidePlayerPage extends StatefulWidget {
-  final RecordData? _recordData;
+  //final RecordData? _recordData;
+  final String _filePath;
 
-  const FileVidePlayerPage(this._recordData, {super.key});
+  const FileVidePlayerPage(//this._recordData,
+   this._filePath, {super.key});
 
   @override
   State<FileVidePlayerPage> createState() =>
-      _FileVidePlayerPageState(_recordData);
+      _FileVidePlayerPageState(//_recordData,
+       _filePath);
 }
 
 class _FileVidePlayerPageState extends State<FileVidePlayerPage> {
   late final _model; // бэкенд логика
   late final _view; // фронтенд логика
 
-  _FileVidePlayerPageState(RecordData? recordData) {
-    if (recordData == null) {
-      throw ErrorDescription("NULL RECORD DATA");
-    }
-    _model = FileVideoPlayerPageStateModel(setState, recordData);
+  _FileVidePlayerPageState(//RecordData? recordData,
+   String filePath) {
+    //if (recordData == null) {
+    //  throw ErrorDescription("NULL RECORD DATA");
+    //}
+    _model = FileVideoPlayerPageStateModel(setState, filePath);
     _view = FileVidePlayerPageStateView(setState, _model);
   }
 

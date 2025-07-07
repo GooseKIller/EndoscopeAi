@@ -41,6 +41,7 @@ class _StreamPageState extends State<StreamPage> {
       onPictureTaken: _handlePictureTaken,
     );
     _initializeModel();
+    _model.startRecording();
   }
 
   Future<void> _initializeModel() async {

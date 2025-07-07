@@ -3,6 +3,7 @@
 //  Модель, содержащая дфнные и логику, не связанную с UI
 // ====================================================
 import 'dart:io';
+import 'package:endoscopy_ai/pages/file_video/file_video_page.dart';
 import 'package:flutter/foundation.dart';
 import 'package:fvp/fvp.dart';
 import 'package:image/image.dart' as img;
@@ -12,11 +13,15 @@ import 'package:endoscopy_ai/features/patient/record_data.dart';
 import 'package:endoscopy_ai/shared/file_choser.dart';
 import 'package:endoscopy_ai/shared/widget/screenshot_preview.dart';
 
+
 // Модель содержащая, данные и логику
 class FileVideoPlayerPageStateModel {
-  FileVideoPlayerPageStateModel(this.setState, this.recordData);
+  final String? _file;
 
-  final RecordData recordData;
+  FileVideoPlayerPageStateModel(
+      this.setState, this._file);
+
+  //final RecordData recordData;
   final Function setState; // callback для обновить сосотояние
   late final VideoPlayerController _controller;
   late final Future<void> _initializeVideoPlayerFuture;
@@ -35,10 +40,10 @@ class FileVideoPlayerPageStateModel {
 
   void initState() {
     _prepareDir();
-    if (FilePicker.checkFile()) {
+    if (_file != null) {
       _isValidFile = true;
       _controller = VideoPlayerController.file(
-        File(FilePicker.filePath.toString()),
+        File(_file),
       );
 
       _initializeVideoPlayerFuture = _controller // инициализация проигрывателя
@@ -52,6 +57,7 @@ class FileVideoPlayerPageStateModel {
       });
     }
   }
+
 
   // подготовка папки с данными
   Future<void> _prepareDir() async {
@@ -142,26 +148,4 @@ class FileVideoPlayerPageStateModel {
   void dispose() {
     _controller.dispose();
   }
-
-  @visibleForTesting
-  Future<void> get initializeFuture => _initializeVideoPlayerFuture ?? Future.value();
-
-  @visibleForTesting
-  set controllerForTest(VideoPlayerController controller) {
-    _controller = controller;
-    _initializeVideoPlayerFuture = controller.initialize().then((_) {
-      if (controller.value.isInitialized) {
-        currentPosition = controller.value.position;
-        totalDuration = controller.value.duration;
-      }
-    });
-  }
-
-  @visibleForTesting
-  static Future<void> prepareTestDir(Directory dir) async {
-    if (!await dir.exists()) {
-      await dir.create(recursive: true);
-    }
-  }
-
 }

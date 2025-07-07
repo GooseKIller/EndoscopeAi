@@ -1,5 +1,6 @@
 import 'package:endoscopy_ai/pages/patient_registration/patient_registration_model.dart';
 import 'package:endoscopy_ai/routes.dart';
+import 'package:endoscopy_ai/shared/file_choser.dart';
 import 'package:endoscopy_ai/shared/widget/text_field.dart';
 import 'package:endoscopy_ai/shared/widget/time_form.dart';
 import 'package:flutter/material.dart';
@@ -76,7 +77,8 @@ class PatientRegistrationViewState {
                             //переход на страницу плеера
                             Navigator.of(context).popAndPushNamed(
                                 _model.nextRoute,
-                                arguments: _model.getRecordData()
+                                //arguments: _model.getRecordData()
+                                arguments: FilePicker.filePath
                                 );
                           },
                           child: Padding(

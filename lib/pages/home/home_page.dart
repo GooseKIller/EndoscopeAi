@@ -47,11 +47,11 @@ class _HomePageState extends State<HomePage> {
                 setState(() {
                   _disableControls = true;
                 });
-                if (context.mounted) {
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(SnackBar(content: Text('Открываем меню...')));
-                }
+                //if (context.mounted) {
+                //  ScaffoldMessenger.of(
+                //    context,
+                //  ).showSnackBar(SnackBar(content: Text('Открываем меню...')));
+                //}
                 await FilePicker.pickFile();
 
                 Navigator.pushNamed(context, Routes.patientRegistration, arguments: Routes.fileVideoPlayer);

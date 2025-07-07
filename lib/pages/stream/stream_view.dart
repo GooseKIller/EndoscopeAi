@@ -146,29 +146,9 @@ class StreamPageView extends StatelessWidget {
                 child: const Icon(Icons.camera_alt),
               ),
             ];
-
-            void addSpace() => buttons.add(const SizedBox(height: 8));
-
-            if (!model.recording) { // Заменить!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-              addSpace();
               buttons.add(
-                FloatingActionButton.extended(
-                  heroTag: 'start_rec_btn',
-                  icon: const Icon(Icons.fiber_manual_record),
-                  label: const Text('Начать видеозапись'),
-                  backgroundColor: Colors.red,
-                  onPressed: () async {
-                    await model.startRecording();
-                  },
-                ),
-              );
-            } else {
-              addSpace();
-              buttons.add(
-                FloatingActionButton.extended(
+                FloatingActionButton(
                   heroTag: 'finish_rec_btn',
-                  icon: const Icon(Icons.stop),
-                  label: const Text('Завершить запись'),
                   backgroundColor: Colors.red,
                   onPressed: () async {
                     final recordedPath = await model.stopRecording();
@@ -193,10 +173,10 @@ class StreamPageView extends StatelessWidget {
                         SnackBar(content: Text('Сохранено в "$finalPath"')),
                       );
                     }
-                  }, // Заменить!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                  },
+                  child: const Icon(Icons.stop),
                 ),
               );
-            }
 
             return Column(mainAxisSize: MainAxisSize.min, children: buttons);
           },

@@ -67,7 +67,8 @@ class _AppState extends State<App> {
         Routes.recordings: (context) => RecordingsPage(),
         Routes.homePage: (context) => const HomePage(),
         Routes.fileVideoPlayer: (context) => FileVidePlayerPage(
-            ModalRoute.of(context)!.settings.arguments as RecordData),
+            //ModalRoute.of(context)!.settings.arguments as RecordData,
+            ModalRoute.of(context)!.settings.arguments as String),
         Routes.patientRegistration: (context) =>
             PatientRegistrationPage(
               ModalRoute.of(context)!.settings.arguments as String
