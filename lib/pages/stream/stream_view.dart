@@ -10,7 +10,6 @@ import 'package:endoscopy_ai/shared/widget/screenshot_feed.dart';
 import 'package:endoscopy_ai/shared/widget/spacing.dart';
 import 'package:provider/provider.dart';
 import 'package:endoscopy_ai/pages/stream/stream_model.dart';
-import 'package:endoscopy_ai/shared/widget/buttons.dart';
 import 'package:path/path.dart' as p;
 import 'package:file_picker/file_picker.dart';
 

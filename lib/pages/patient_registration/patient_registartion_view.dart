@@ -1,5 +1,4 @@
 import 'package:endoscopy_ai/pages/patient_registration/patient_registration_model.dart';
-import 'package:endoscopy_ai/routes.dart';
 import 'package:endoscopy_ai/shared/file_choser.dart';
 import 'package:endoscopy_ai/shared/widget/text_field.dart';
 import 'package:endoscopy_ai/shared/widget/time_form.dart';

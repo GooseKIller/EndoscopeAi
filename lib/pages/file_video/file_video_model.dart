@@ -3,14 +3,11 @@
 //  Модель, содержащая дфнные и логику, не связанную с UI
 // ====================================================
 import 'dart:io';
-import 'package:endoscopy_ai/pages/file_video/file_video_page.dart';
 import 'package:flutter/foundation.dart';
 import 'package:fvp/fvp.dart';
 import 'package:image/image.dart' as img;
 import 'package:path_provider/path_provider.dart';
 import 'package:video_player/video_player.dart';
-import 'package:endoscopy_ai/features/patient/record_data.dart';
-import 'package:endoscopy_ai/shared/file_choser.dart';
 import 'package:endoscopy_ai/shared/widget/screenshot_preview.dart';
 
 

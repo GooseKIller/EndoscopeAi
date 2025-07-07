@@ -67,7 +67,7 @@ class _CustomTimeFormFieldState extends State<CustomTimeFormField>{
               mode: CupertinoDatePickerMode.time,
               use24hFormat: true,
               // This is called when the user changes the time.. 
-              onDateTimeChanged: (DateTime newValue) => setState(() => _onSave(newValue)),
+              onDateTimeChanged: (DateTime newValue) => setState(() {time = newValue; _onSave(newValue);}),
             ),
           ),
           // In this example, the time value is formatted manually.

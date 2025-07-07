@@ -1,4 +1,3 @@
-import 'package:endoscopy_ai/pages/file_video/file_video_page.dart';
 import 'package:flutter/material.dart';
 import 'recordings_model.dart';
 import 'package:endoscopy_ai/routes.dart';
@@ -11,7 +10,6 @@ enum Command{
 class RecordingsPageView {
   final RecordingsPageModel _model;
   final Function setState;
-  Command? command;
 
   RecordingsPageView(this._model, this.setState);
 
@@ -94,13 +92,12 @@ class RecordingsPageView {
         (recording.fileName.isNotEmpty)
             ? recording.fileName
             : 'Запись ${recording.timestamp.toString()}';
-    String? command;
     return ListTile(
       leading: Icon(Icons.video_library, size: 40),
       title: Text(displayName),
       subtitle: Text(recording.filePath),
       trailing: PopupMenuButton<Command>(
-              onSelected: (command) {
+              onSelected: (Command? command) {
                 setState(() {
                   print(command);
                   switch (command){
@@ -108,6 +105,7 @@ class RecordingsPageView {
                       _model.deleteRecordings([recording]);
                     case Command.rename:
                       print('Rename?');
+                    case null:
                   }
                 });
               },

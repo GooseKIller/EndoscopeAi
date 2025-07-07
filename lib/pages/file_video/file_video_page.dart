@@ -1,7 +1,6 @@
 // ====================================================
 //  Страница для вопроизведения зяписанного видео
 // ====================================================
-import 'package:endoscopy_ai/features/patient/record_data.dart';
 import 'package:flutter/material.dart';
 import 'file_video_model.dart';
 import 'file_video_view.dart';
