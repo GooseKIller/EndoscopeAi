@@ -11,10 +11,11 @@ import 'stream_view.dart';
 // Страница просмотра потокового видео с камеры
 class StreamPage extends StatefulWidget {
   final CameraDescription camera; // Данные о камере
-  final RecordData? _recordData;
+  // final RecordData? _recordData;
 
   // `camera` - данные о камеры, с которой будет браться видеопоток
-  const StreamPage(this._recordData, {super.key, required this.camera});
+  const StreamPage(//this._recordData,
+   {super.key, required this.camera});
 
   @override
   State<StreamPage> createState() => _StreamPageState();

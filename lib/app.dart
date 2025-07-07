@@ -99,7 +99,7 @@ class _AppState extends State<App> {
               ),
             );
           }
-          return StreamPage(camera: cameras.first, ModalRoute.of(context)!.settings.arguments as RecordData);
+          return StreamPage(camera: cameras.first);
         },
         Routes.annotate: (context) {
           final path = ModalRoute.of(context)!.settings.arguments as String;
