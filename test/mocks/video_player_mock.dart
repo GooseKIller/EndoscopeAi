@@ -57,9 +57,8 @@ class MockVideoPlayerController extends Mock implements VideoPlayerController {
         Invocation.method(#snapshot, []),
         returnValue: Future.value(Uint8List(0)),
       );
-
-      
 }
+
 class MockRecordData extends Mock implements RecordData {
   @override
   int get id => 1;
@@ -89,4 +88,3 @@ class FakeFilePicker {
     return path != null;
   }
 }
-

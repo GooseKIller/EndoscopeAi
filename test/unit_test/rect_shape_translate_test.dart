@@ -1,5 +1,4 @@
-
-import 'dart:ui';                    
+import 'dart:ui';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:endoscopy_ai/pages/annotate/shapes.dart';
 
@@ -8,7 +7,7 @@ void main() {
     final shape = RectShape(
       const Offset(.2, .3),
       const Offset(.4, .5),
-      const Color(0xFF00FF00),      
+      const Color(0xFF00FF00),
       2,
     );
 

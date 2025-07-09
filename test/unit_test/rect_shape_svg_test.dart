@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:xml/xml.dart';
@@ -18,10 +17,10 @@ void main() {
 
     final xml = shape.toSvg(cs) as XmlElement;
     expect(xml.name.local, equals('rect'));
-    expect(xml.getAttribute('x'),   equals('10.0'));
-    expect(xml.getAttribute('y'),   equals('40.0'));
-    expect(xml.getAttribute('width'),  equals('30.0'));  // 40-10
-    expect(xml.getAttribute('height'), equals('80.0'));  // 120-40
+    expect(xml.getAttribute('x'), equals('10.0'));
+    expect(xml.getAttribute('y'), equals('40.0'));
+    expect(xml.getAttribute('width'), equals('30.0')); // 40-10
+    expect(xml.getAttribute('height'), equals('80.0')); // 120-40
     expect(xml.getAttribute('stroke'), equals('#f44336'));
   });
 }
