@@ -26,11 +26,14 @@ dependencies:
   camera_platform_interface: ^2.10.0
   ffmpeg_kit_flutter: ^5.1.0 
   permission_handler: ^10.4.4
-  flutter_rust_bridge: ^2.10.0
+  flutter_rust_bridge: 2.10.0
   shared_preferences: ^2.2.2
   mockito: ^5.4.6
   plugin_platform_interface: ^2.1.8
+  rust_lib_endoscopy_ai:
+    path: rust_builder
 
+  xml: any
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -38,5 +41,7 @@ dev_dependencies:
   integration_test:
     sdk: flutter
 
+  matcher: any
+  xml: any
 flutter:
   uses-material-design: true

@@ -7,6 +7,9 @@ use ort::session::builder::SessionBuilder;
 use ort::session::{Session, SessionOutputs};
 use ort::value::{Tensor, Value};
 
+use flutter_rust_bridge::frb;
+
+
 /// Прямоугольник, ограничивающий обнаруженный объект.
 ///
 /// Хранит координаты двух углов: верхнего левого (`x1`, `y1`) и нижнего правого (`x2`, `y2`).
@@ -74,6 +77,8 @@ pub struct DetectionResult {
 /// Интерфейс для работы с YOLO-моделью через ONNX Runtime.
 ///
 /// Обрабатывает изображение, выполняет инференс и постобработку (NMS).
+
+#[frb(ignore)]
 pub struct YOLO {
     session: Session,
     class_labels: Vec<String>,
@@ -120,6 +125,28 @@ impl YOLO {
 
         let session = SessionBuilder::new()?
             .commit_from_file(model_path)?;
+            //Session::builder()?.commit_from_file(model_path)?;
+
+        Ok(Self{
+            session,
+            class_labels,
+            confidence_threshold,
+            nms_threshold
+        })
+    }
+
+    pub fn new_from_mem(
+        mem:&[u8],
+        class_labels: Vec<String>,
+        confidence_threshold: f32,
+        nms_threshold: f32,
+    ) -> Result<Self> {
+        //let environment = EnvironmentBuilder::
+          //  .with_execution_providers([ExecutionProvider::CUDA(Default::default())])
+            //.build()?;
+
+        let session = SessionBuilder::new()?
+            .commit_from_memory(mem)?;
             //Session::builder()?.commit_from_file(model_path)?;
 
         Ok(Self{

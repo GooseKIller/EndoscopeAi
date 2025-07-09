@@ -1,0 +1,3 @@
+rust_input: crate::yolo
+rust_root: rust/
+dart_output: lib/rust
