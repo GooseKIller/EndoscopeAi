@@ -24,7 +24,7 @@ pub struct YoloHandle(
      pub YOLO
 );
 
-#[frb(proxy)]
+#[frb]
 pub fn yolo_new(
     model_path: String,
     class_labels: Vec<String>,
@@ -40,7 +40,7 @@ pub fn yolo_new(
     Ok(YoloHandle(yolo.unwrap()))
 }
 
-#[frb(proxy)]
+#[frb]
 pub fn yolo_new_mem(
     mem: &[u8],
     class_labels: Vec<String>,
