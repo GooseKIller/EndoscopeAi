@@ -1,3 +1,4 @@
+import 'package:endoscopy_ai/features/video_player/player_data.dart';
 import 'package:endoscopy_ai/pages/patient_registration/patient_registration_model.dart';
 import 'package:endoscopy_ai/shared/file_choser.dart';
 import 'package:endoscopy_ai/shared/widget/text_field.dart';
@@ -76,8 +77,7 @@ class PatientRegistrationViewState {
                             //переход на страницу плеера
                             Navigator.of(context).popAndPushNamed(
                                 _model.nextRoute,
-                                //arguments: _model.getRecordData()
-                                arguments: FilePicker.filePath
+                                arguments: PlayerData(_model.getRecordData(), FilePicker.filePath)
                                 );
                           },
                           child: Padding(

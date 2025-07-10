@@ -1,87 +1,108 @@
-// ====================================================
-//  Страница для вопроизведения зяписанного видео
-//  Модель, содержащая дфнные и логику, не связанную с UI
-// ====================================================
 import 'dart:io';
+
+import 'package:endoscopy_ai/features/storage_system/save_manager.dart';
+import 'package:endoscopy_ai/features/video_player/player_data.dart';
+import 'package:endoscopy_ai/shared/utility/create_folder.dart';
+import 'package:endoscopy_ai/shared/widget/screenshot_preview.dart';
 import 'package:flutter/foundation.dart';
 import 'package:fvp/fvp.dart';
 import 'package:image/image.dart' as img;
-import 'package:path_provider/path_provider.dart';
 import 'package:video_player/video_player.dart';
-import 'package:endoscopy_ai/shared/widget/screenshot_preview.dart';
-
+import 'package:path/path.dart' as p;
 
 // Модель содержащая, данные и логику
 class FileVideoPlayerPageStateModel {
-  final String? _file;
+  final PlayerData _playerData;
+  final Function setState;
 
-  FileVideoPlayerPageStateModel(
-      this.setState, this._file);
-
-  //final RecordData recordData;
-  final Function setState; // callback для обновить сосотояние
-  late final VideoPlayerController _controller;
-  late final Future<void> _initializeVideoPlayerFuture;
+  // Make controller nullable
+  VideoPlayerController? _controller;
   bool _isPlaying = false;
   bool showControls = false;
   bool _isValidFile = false;
+  bool _isInitialized = false;
   Duration currentPosition = Duration.zero;
   Duration totalDuration = Duration.zero;
   final List<ScreenshotPreviewModel> _shots = []; // список миниатюр
-  late Directory _shotsDir; // директория …/screenshots
+  Directory? _shotsDir; // директория …/screenshots
 
   bool get isPlaying => _isPlaying;
   bool get isValidFile => _isValidFile;
+  bool get isInitialized => _isInitialized;
   List<ScreenshotPreviewModel> get shots => _shots;
-  VideoPlayerController get controller => _controller;
+  
+  // Return nullable controller
+  VideoPlayerController? get controller => _controller;
+  
+  late final SaveManager _saveManager;
+
+  // Public future for initialization tracking
+  Future<void>? initializationFuture;
+
+  FileVideoPlayerPageStateModel(this.setState, this._playerData);
 
   void initState() {
-    _prepareDir();
-    if (_file != null) {
+    _saveManager = SaveManager(_playerData);
+    if (_playerData.filePath != null) {
       _isValidFile = true;
-      _controller = VideoPlayerController.file(
-        File(_file),
-      );
-
-      _initializeVideoPlayerFuture = _controller // инициализация проигрывателя
-          .initialize()
-          .then((_) {
-        setState(() {
-          totalDuration = _controller.value.duration;
-        });
-      }).catchError((error) {
-        debugPrint('Ошибка инициализации видео: $error');
-      });
+      
+      // Save this future to track initialization
+      initializationFuture = _saveVideoAndInitializeController();
     }
   }
 
-
-  // подготовка папки с данными
-  Future<void> _prepareDir() async {
-    final base = await getApplicationDocumentsDirectory(); // path_provider
-    _shotsDir = Directory('${base.path}/screenshots');
-    if (!await _shotsDir.exists()) {
-      await _shotsDir.create(recursive: true);
+  Future<void> _saveVideoAndInitializeController() async {
+    try {
+      // 1. First save the video to get the new path
+      await _saveManager.saveVideo(_playerData.filePath as String);
+      
+      // 2. Now get the new file path
+      final newFilePath = _saveManager.filePath;
+      
+      // 3. Initialize controller with the new file path
+      _controller = VideoPlayerController.file(File(newFilePath));
+      
+      // 4. Initialize video player
+      await _controller!.initialize();
+      
+      // 5. Setup screenshot directory
+      _shotsDir = Directory(_saveManager.screenshotPath);
+      await createFolder(_shotsDir!);
+      
+      // 6. Update UI and mark as initialized
+      setState(() {
+        totalDuration = _controller!.value.duration;
+        _isInitialized = true;
+      });
+    } catch (e) {
+      debugPrint('Ошибка инициализации видео: $e');
+      setState(() {
+        _isValidFile = false;
+      });
     }
   }
 
   // установить время на видео
   void seekTo(Duration pos) {
-    _controller.seekTo(pos);
+    if (!_isInitialized || _controller == null) return;
+    
+    _controller!.seekTo(pos);
     if (_isPlaying) {
-      togglePlayPause(); // если было включено - поставим на паузу
+      togglePlayPause();
     }
   }
 
   // сделать скриншот
   void makeScreenshot() async {
-    final width = _controller.value.size.width.toInt();
-    final height = _controller.value.size.height.toInt();
-    final controllerPosition = _controller.value.position;
+    // Ensure controller is initialized and ready
+    if (!_isInitialized || _controller == null || _shotsDir == null) return;
+    
+    final width = _controller!.value.size.width.toInt();
+    final height = _controller!.value.size.height.toInt();
+    final controllerPosition = _controller!.value.position;
 
-    // Определяем вывод скриншота
     final fileName = '${DateTime.now().millisecondsSinceEpoch}.png';
-    final filePath = '${_shotsDir.path}/$fileName';
+    final filePath = p.join(_shotsDir!.path, fileName);
 
     final screenshotVisual = ScreenshotPreviewModel(
       filePath,
@@ -92,8 +113,7 @@ class FileVideoPlayerPageStateModel {
     _shots.add(screenshotVisual);
 
     try {
-      // Запрос и чтение данных из видеоконтроллера
-      final pixelData = await _controller.snapshot(
+      final pixelData = await _controller!.snapshot(
         width: width,
         height: height,
       );
@@ -103,23 +123,18 @@ class FileVideoPlayerPageStateModel {
         return;
       }
 
-      // Аллокация ресурсов для изображения по ее ширине и высоте
       final image = img.Image.fromBytes(
         width: width,
         height: height,
         bytes: pixelData.buffer,
-        numChannels:
-            4, // По https://pub.dev/documentation/fvp/latest/fvp/FVPControllerExtensions/snapshot.html :
+        numChannels: 4,
       );
 
-      // Дкодировать РГБ данные в пнг в изоляте из-за сложности процесса
       final pngBytes = await compute((im) => img.encodePng(im), image);
 
-      // Сохранить
       final outFile = File(filePath);
       await outFile.writeAsBytes(pngBytes);
 
-      // Обновить меню для скриншотов
       setState(() {
         screenshotVisual.state = ScreenshotPreviewState.good;
       });
@@ -128,21 +143,22 @@ class FileVideoPlayerPageStateModel {
       setState(() {
         screenshotVisual.state = ScreenshotPreviewState.error;
       });
-
       print('ОШИБКА СОЗАДНИЯ СКРИНШОТА: $error');
     }
   }
 
   // смена состояния проигрывания
   void togglePlayPause() {
+    if (!_isInitialized || _controller == null) return;
+    
     setState(() {
       _isPlaying = !_isPlaying;
-      _isPlaying ? _controller.play() : _controller.pause();
+      _isPlaying ? _controller!.play() : _controller!.pause();
     });
   }
 
   // освобождение ресурсов
   void dispose() {
-    _controller.dispose();
+    _controller?.dispose();
   }
 }

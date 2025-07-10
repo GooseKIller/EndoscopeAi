@@ -5,7 +5,7 @@ class PatientRegistrationModel {
   late String _name = '';
   late String _surname = '';
   late int _id = -1;
-  late DateTime _time = DateTime.fromMicrosecondsSinceEpoch(0);
+  late DateTime _time = DateTime.now();
 
   PatientRegistrationModel(this.nextRoute);
 

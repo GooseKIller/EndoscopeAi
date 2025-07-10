@@ -2,7 +2,6 @@
 //  Страница для просмотра стриммингого видео
 //  Тут имплементировано взаимодействие с UI
 // ====================================================
-import 'dart:io';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
@@ -10,8 +9,6 @@ import 'package:endoscopy_ai/shared/widget/screenshot_feed.dart';
 import 'package:endoscopy_ai/shared/widget/spacing.dart';
 import 'package:provider/provider.dart';
 import 'package:endoscopy_ai/pages/stream/stream_model.dart';
-import 'package:path/path.dart' as p;
-import 'package:file_picker/file_picker.dart';
 
 //  Логика, содержащая логику, связанную с UI
 class StreamPageView extends StatelessWidget {
@@ -21,8 +18,6 @@ class StreamPageView extends StatelessWidget {
   // Ф-ия, вызываемая при нажатии на кнопку назад
 
   final VoidCallback onBackPressed;
-  // Ф-ия, вызываемая при сохранении фотографии
-  final Function(XFile) onPictureTaken;
 
   /*
     * `model` - модель с текущей страницы
@@ -35,7 +30,6 @@ class StreamPageView extends StatelessWidget {
     required this.model,
     required this.camera,
     required this.onBackPressed,
-    required this.onPictureTaken,
   });
 
   @override
@@ -102,7 +96,8 @@ class StreamPageView extends StatelessWidget {
                 ),
                 createIndention(5, 5),
                 Expanded(
-                  child: Column(
+                  child: Container(
+                    child: Column(
                     children: [
                       ScreenshotFeed(onFetchScreenshots: () => model.shots),
                       const SizedBox(height: 8),
@@ -120,6 +115,7 @@ class StreamPageView extends StatelessWidget {
                       ),
                     ],
                   ),
+                )
                 ),
               ],
             );
@@ -136,11 +132,8 @@ class StreamPageView extends StatelessWidget {
             final buttons = <Widget>[
               FloatingActionButton(
                 heroTag: 'shot_btn',
-                onPressed: () async {
-                  final image = await model.takePicture();
-                  if (image != null) {
-                    onPictureTaken(image);
-                  }
+                onPressed: () {
+                  model.makeScreenshot();
                 },
                 child: const Icon(Icons.camera_alt),
               ),
@@ -149,30 +142,7 @@ class StreamPageView extends StatelessWidget {
                 FloatingActionButton(
                   heroTag: 'finish_rec_btn',
                   backgroundColor: Colors.red,
-                  onPressed: () async {
-                    final recordedPath = await model.stopRecording();
-                    if (recordedPath == null) return;
-                    final savePath = await FilePicker.platform.saveFile(
-                      dialogTitle: 'Сохранить видео',
-                      // fileName: '${DateTime.now().millisecondsSinceEpoch}.mp4',
-                      fileName: p.basename(recordedPath),
-                      type: FileType.custom,
-                      allowedExtensions: ['mp4'],
-                    );
-                    String finalPath = recordedPath;
-                    if (savePath != null) {
-                      final normalized = savePath.toLowerCase().endsWith('.mp4')
-                          ? savePath
-                          : '$savePath.mp4';
-                      await File(recordedPath).copy(normalized);
-                      finalPath = normalized;
-                    }
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Сохранено в "$finalPath"')),
-                      );
-                    }
-                  },
+                  onPressed: model.saveStream,
                   child: const Icon(Icons.stop),
                 ),
               );

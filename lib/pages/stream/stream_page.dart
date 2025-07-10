@@ -3,7 +3,7 @@
 // ====================================================
 
 import 'package:camera/camera.dart';
-import 'package:endoscopy_ai/features/patient/record_data.dart';
+import 'package:endoscopy_ai/features/video_player/player_data.dart';
 import 'package:flutter/material.dart';
 import 'stream_model.dart';
 import 'stream_view.dart';
@@ -11,38 +11,45 @@ import 'stream_view.dart';
 // Страница просмотра потокового видео с камеры
 class StreamPage extends StatefulWidget {
   final CameraDescription camera; // Данные о камере
-  // final RecordData? _recordData;
+  final PlayerData _playerData;
 
   // `camera` - данные о камеры, с которой будет браться видеопоток
-  const StreamPage(//this._recordData,
-   {super.key, required this.camera});
+  const StreamPage(this._playerData, {super.key, required this.camera});
 
   @override
-  State<StreamPage> createState() => _StreamPageState();
+  State<StreamPage> createState() => _StreamPageState(_playerData);
 }
 
 class _StreamPageState extends State<StreamPage> {
   late final StreamPageModel _model;
   late final StreamPageView _view;
   bool _isModelInitialized = false;
+  late final PlayerData _playerData;
+
+  _StreamPageState(PlayerData? playerData){
+    if (playerData == null) {
+      throw ErrorDescription("NULL RECORD DATA");
+    }
+    _playerData = playerData;
+  }
 
   // Инициализация ресурсов
   @override
   void initState() {
     super.initState();
-
     _model = StreamPageModel(
-      cameraDescription: widget.camera,
+      _playerData,
+      widget.camera,
+      setState,
     ); // создание модели
     _view = StreamPageView(
       // создание визуальной части
       model: _model,
       camera: widget.camera,
       onBackPressed: () => Navigator.pop(context),
-      onPictureTaken: _handlePictureTaken,
     );
+
     _initializeModel();
-    _model.startRecording();
   }
 
   Future<void> _initializeModel() async {
@@ -64,18 +71,18 @@ class _StreamPageState extends State<StreamPage> {
     super.dispose();
   }
 
-  // Обработка сохраненного скриншота по пути `image`
-  void _handlePictureTaken(XFile image) {
-    setState(
-      () => _model.saveScreenshot(image),
-    ); // добавляем в ленту скриншотов новую фотографию
+  // // Обработка сохраненного скриншота по пути `image`
+  // void _handlePictureTaken(XFile image) {
+  //   setState(
+  //     () => _model.makeScreenshot(image),
+  //   ); // добавляем в ленту скриншотов новую фотографию
 
-    // Navigator.pushNamed(
-    //   context,
-    //   Routes.annotate,
-    //   arguments: image.path,
-    // );
-  }
+  //   // Navigator.pushNamed(
+  //   //   context,
+  //   //   Routes.annotate,
+  //   //   arguments: image.path,
+  //   // );
+  // }
 
   @override
   Widget build(BuildContext context) {

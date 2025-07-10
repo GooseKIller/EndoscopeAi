@@ -16,11 +16,11 @@ class MarksPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
       ..color = const Color.fromARGB(255, 224, 221, 221)
-      ..strokeWidth = 8;
+      ..strokeWidth = 5;
 
     final activePaint = Paint()
       ..color = const Color.fromARGB(255, 219, 38, 25)
-      ..strokeWidth = 8;
+      ..strokeWidth = 5;
 
     for (var shot in shots) {
       final positionMs = shot.position.inMilliseconds.toDouble();
@@ -31,8 +31,8 @@ class MarksPainter extends CustomPainter {
           (positionMs - currentPosition.inMilliseconds).abs() < 100;
 
       canvas.drawLine(
-        Offset(x, size.height / 2 + 14),
-        Offset(x, size.height / 2 - 2),
+        Offset(x, size.height / 2 + 15),
+        Offset(x, size.height / 2 - 5),
         isActive ? activePaint : paint,
       );
     }

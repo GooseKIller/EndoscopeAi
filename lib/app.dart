@@ -1,7 +1,7 @@
 // ====================================================
 //  Главное окно приложения, на котором производится отрисовка
 // ====================================================
-import 'package:endoscopy_ai/features/patient/record_data.dart';
+import 'package:endoscopy_ai/features/video_player/player_data.dart';
 import 'package:endoscopy_ai/pages/patient_registration/patient_registration_page.dart';
 
 import 'routes.dart';
@@ -66,9 +66,9 @@ class _AppState extends State<App> {
       routes: {
         Routes.recordings: (context) => RecordingsPage(),
         Routes.homePage: (context) => const HomePage(),
-        Routes.fileVideoPlayer: (context) => FileVidePlayerPage(
+        Routes.fileVideoPlayer: (context) => FileVideoPlayerPage(
             //ModalRoute.of(context)!.settings.arguments as RecordData,
-            ModalRoute.of(context)!.settings.arguments as String),
+            ModalRoute.of(context)!.settings.arguments as PlayerData),
         Routes.patientRegistration: (context) =>
             PatientRegistrationPage(
               ModalRoute.of(context)!.settings.arguments as String
@@ -99,7 +99,7 @@ class _AppState extends State<App> {
               ),
             );
           }
-          return StreamPage(camera: cameras.first);
+          return StreamPage(camera: cameras.first, ModalRoute.of(context)!.settings.arguments as PlayerData);
         },
         Routes.annotate: (context) {
           final path = ModalRoute.of(context)!.settings.arguments as String;

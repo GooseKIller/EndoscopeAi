@@ -5,15 +5,20 @@
 
 import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data';
+
+import 'package:image/image.dart' as img;
 
 import 'package:camera/camera.dart';
+import 'package:endoscopy_ai/features/storage_system/save_manager.dart';
+import 'package:endoscopy_ai/features/storage_system/storage_system.dart';
+import 'package:endoscopy_ai/features/video_player/player_data.dart';
+import 'package:endoscopy_ai/shared/utility/create_folder.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:endoscopy_ai/shared/widget/screenshot_preview.dart';
 import 'package:endoscopy_ai/shared/camera/windows_camera_helper.dart';
 import 'package:path/path.dart' as p;
-import 'package:endoscopy_ai/pages/recordings/recordings_model.dart';
 
 class StreamPageModel with ChangeNotifier {
   final CameraDescription cameraDescription; // данные о камере
@@ -34,14 +39,27 @@ class StreamPageModel with ChangeNotifier {
   bool get paused => _isPaused;
   List<String> get transcripts => _transcripts;
 
+  late final SaveManager _saveManager;
+  late final PlayerData _playerData;
+  DateTime? _startTime;
+  Duration _currentPosition = Duration.zero;
+  Timer? _timer;
+  bool _isRunning = false;
+
+  final Function setState;
+
   // Геттеры/сеттеры
   bool get isInitialized => _isInitialized;
   bool get cameraAvailable => _cameraAvailable; // Геттер для доступности камеры
   CameraController? get controller => _controller;
   List<ScreenshotPreviewModel> get shots => _shots;
 
+  Directory? _shotsDir;
+
   // `cameraDescription` -  данные о камере
-  StreamPageModel({required this.cameraDescription}) {
+  StreamPageModel(this._playerData, this.cameraDescription, this.setState) {
+    _saveManager = SaveManager(_playerData);
+    _startTime = DateTime.now();
     _prepareDirs();
     // Не инициализируем камеру в конструкторе, только в initialize()
   }
@@ -61,6 +79,10 @@ class StreamPageModel with ChangeNotifier {
 
     try {
       await _cameraInitializationFuture;
+      await startRecording();
+      await _saveManager.prepareFolder();
+      _shotsDir = Directory(_saveManager.screenshotPath);
+      await createFolder(_shotsDir!);
     } finally {
       _cameraInitializationFuture = null;
     }
@@ -134,8 +156,8 @@ class StreamPageModel with ChangeNotifier {
   }
 
   Future<void> _prepareDirs() async {
-    final base = await getApplicationDocumentsDirectory();
-    _recordingsDir = Directory(p.join(base.path, 'recordings'));
+    final base = StorageSystem.systemPath;
+    _recordingsDir = Directory(p.join(base, 'recordings'));
     if (!await _recordingsDir.exists()) {
       await _recordingsDir.create(recursive: true);
     }
@@ -210,7 +232,7 @@ class StreamPageModel with ChangeNotifier {
     });
   }
 
-  // Сохранение кадра в файл. Возвращает путь к этому кадру
+  // Сохранение кадра в файл
   Future<XFile?> takePicture() async {
     if (!_isInitialized || _controller == null || _isDisposed) return null;
     try {
@@ -223,26 +245,72 @@ class StreamPageModel with ChangeNotifier {
     }
   }
 
-  // Функция, которая вызвается при успешном сохранении кадра
-  void saveScreenshot(XFile file) {
-    if (_isDisposed) return;
+// Сделать скриншот
+  void makeScreenshot() async {
+    if (!_isInitialized || _controller == null || _shotsDir == null) return;
 
-    // Добавляем кадр в ленту
-    _shots.add(
-      ScreenshotPreviewModel(
-        file.path,
-        Duration.zero /* TODO: implement stopwatch */,
-      ),
+    // Получаем размеры превью (не фактические размеры снимка!)
+    final previewWidth = _controller!.value.previewSize?.width.toInt();
+    final previewHeight = _controller!.value.previewSize?.height.toInt();
+
+    // Проверяем полученные размеры
+    if (previewWidth == null || previewHeight == null) {
+      print('Preview size is not available');
+      return;
+    }
+
+    final fileName = '${DateTime.now().millisecondsSinceEpoch}.png';
+    final filePath = p.join(_shotsDir!.path, fileName);
+    print(_shotsDir!.path);
+
+    final screenshotVisual = ScreenshotPreviewModel(
+      filePath,
+      _currentPosition!,
+      state: ScreenshotPreviewState.pending,
     );
+
+    _shots.add(screenshotVisual);
+
+    try {
+      final xFile = await _controller!.takePicture();
+      final jpegBytes = await xFile.readAsBytes();
+
+      // Синхронная обработка в основном потоке
+      final image = img.decodeJpg(jpegBytes)!;
+      final pngBytes = img.encodePng(image);
+
+      await File(filePath).writeAsBytes(pngBytes);
+      print("Скриншот сохранён в файл: $filePath");
+      setState(() {
+        screenshotVisual.state = ScreenshotPreviewState.good;
+      });
+    } catch (error) {
+      setState(() => screenshotVisual.state = ScreenshotPreviewState.error);
+      print('ОШИБКА СОЗДАНИЯ СКРИНШОТА: $error');
+    }
+  }
+
+  void _startTimer(){
+    setState(() {
+      _isRunning = true;
+      _startTime = DateTime.now().subtract(_currentPosition);
+      
+      // Обновление времени каждые 100 миллисекунд
+      _timer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
+        setState(() {
+          _currentPosition = DateTime.now().difference(_startTime!);
+        });
+      });
+    });
   }
 
   Future<void> startRecording() async {
-    print("I'm here!");
     if (_isRecording || !_isInitialized || _controller == null || _isDisposed) {
       return;
     }
     print("recording.....");
     await _controller!.startVideoRecording();
+    _startTimer();
     _isRecording = true;
     _isPaused = false;
     _transcripts.clear();
@@ -251,7 +319,7 @@ class StreamPageModel with ChangeNotifier {
     }
   }
 
-  Future<String?> stopRecording({String? savePath}) async {
+  Future<String?> stopRecording() async {
     if (!_isRecording || _controller == null || _isDisposed) return null;
     try {
       final file = await _controller!.stopVideoRecording();
@@ -264,27 +332,26 @@ class StreamPageModel with ChangeNotifier {
       await File(file.path).copy(recordingsOut);
       String finalPath = recordingsOut;
 
-      if (savePath != null) {
-        await File(recordingsOut).copy(savePath);
-        finalPath = savePath;
-      }
       if (!_isDisposed) {
         notifyListeners();
       }
-      // Автоматически добавляем запись в список записей
-      await RecordingsPageModel().addRecording(
-        Recording(
-          filePath: finalPath,
-          timestamp: DateTime.now(),
-          fileName: p.basename(finalPath),
-        ),
-      );
       return finalPath;
     } catch (e) {
       if (kDebugMode) {
         print('Error during stopRecording: $e');
       }
       return null;
+    }
+  }
+
+  Future<void> saveStream() async {
+    final recordedPath = await stopRecording();
+    if (recordedPath == null) return;
+    File file = File(recordedPath);
+    await _saveManager.saveVideo(recordedPath);
+    if (await file.exists()) {
+      await file.delete();
+      print('${file.path} deleted!');
     }
   }
 

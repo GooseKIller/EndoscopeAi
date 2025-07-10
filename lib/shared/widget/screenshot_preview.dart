@@ -112,14 +112,20 @@ class ScreenshotPreviewView extends StatelessWidget {
           fit: BoxFit.cover,
           width: double.infinity,
           height: double.infinity,
+          cacheWidth: 320, // Кэшируем уменьшенную версию для списка
+          cacheHeight: 180,
         );
       case ScreenshotPreviewState.pending: // изображение ещё загружается
-        return const SizedBox.square(
-          dimension: 5,
-          child: CircularProgressIndicator(),
+        return const Center(
+          child: SizedBox.square(
+            dimension: 20,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
         );
       case ScreenshotPreviewState.error: // ошибка загрузки
-        return const Icon(Icons.error, color: Colors.red);
+        return const Center(
+          child: Icon(Icons.error, color: Colors.red),
+        );
     }
   }
 }
