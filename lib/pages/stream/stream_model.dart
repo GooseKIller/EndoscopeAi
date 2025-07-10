@@ -323,6 +323,9 @@ class StreamPageModel with ChangeNotifier {
     if (!_isRecording || _controller == null || _isDisposed) return null;
     try {
       final file = await _controller!.stopVideoRecording();
+      _isRunning = false;
+      _timer?.cancel();
+
       _isRecording = false;
       _isPaused = false;
       _sttSub?.cancel();
@@ -365,6 +368,10 @@ class StreamPageModel with ChangeNotifier {
 
     _sttSub?.cancel();
     _cameraCheckTimer?.cancel();
+
+    if (_isRunning){
+      _timer?.cancel;
+    }
 
     // Асинхронное освобождение ресурсов камеры
     _disposeCamera();
