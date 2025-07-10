@@ -1,50 +1,35 @@
-// ====================================================
-//  Wrapper для ИИ по поиску полипов
-// ====================================================
+import 'package:endopolypai/endopolypai.dart' as epi;
+import 'package:endopolypai/rust/yolo/flutter_yolo.dart';
+import 'package:flutter/foundation.dart';
+export 'package:endopolypai/endopolypai.dart' show FFIDetectionResult;
 
-import 'dart:typed_data';
+class AiError extends ErrorDescription {
+  AiError(String message) : super('AI ERROR: $message');
+}
 
-import 'package:endoscopy_ai/rust/yolo/flutter_yolo.dart';
-import 'package:flutter/services.dart' show rootBundle;
+class EndoAi {
+  static EndoAi? _instance = null;
+  static const String _modelPath = 'assets/models/best_yolo.onnx';
 
-class EndoAI {
-  // путь к модели
-  static const String _modelPath = "assets/models/best_yolo.onnx";
+  final epi.EndoAI _model;
 
-  // параметры моделт
-  static const classLabels = ['polyp', 'other'];
-  static const confidenceThreshold = 0.25;
-  static const nmsThreshold = 0.7;
+  EndoAi._(this._model);
 
-  // rust handle
-  final YoloHandle _handle;
+  Future<List<epi.FFIDetectionResult>> predict({
+    required int width,
+    required int height,
+    required Uint8List pixels,
+  }) =>
+      _model.predict(width: width, height: height, pixels: pixels);
 
-  EndoAI._(this._handle);
-
-  // Поиск полипов на изображении
-  // `width`, `height` - ширина и высота изображения
-  // `pixels` - пиксели изображения
-  Future<List<FFIDetectionResult>> predict(
-          {required int width,
-          required int height,
-          required Uint8List pixels}) =>
-      yoloPredict(
-          yoloHandle: _handle, width: width, height: height, pixels: pixels);
-
-  // Создание обертки в несоклько этапов:
-  // 1) Загрузка модели в ram
-  // 2) Передача байтов в rust
-  // 3) Загрузка rust handle
-  static Future<EndoAI> create() async {
-    final byteData = await rootBundle.load(_modelPath);
-    final modelData = byteData.buffer.asUint8List();
-
-    final handle = await yoloNewMem(
-        mem: modelData,
-        classLabels: classLabels,
-        confidenceThreshold: confidenceThreshold,
-        nmsThreshold: nmsThreshold);
-
-    return EndoAI._(handle);
+  static Future<void> initialize() async {
+    if (_instance != null) throw AiError('EndoAi is already inialized');
+    print('Initializing endopolypai backend...');
+    await epi.RustLib.init();
+    print('Succesfully initialized endopolypai backend!');
+    print('Initializing endopolypai model...');
+    final model = await epi.EndoAI.createFromAsset(assetModelPath: _modelPath);
+    print('Succesfully initialized endopolypai model!');
+    _instance = EndoAi._(model);
   }
 }

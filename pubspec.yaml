@@ -30,8 +30,8 @@ dependencies:
   shared_preferences: ^2.2.2
   mockito: ^5.4.6
   plugin_platform_interface: ^2.1.8
-  rust_lib_endoscopy_ai:
-    path: rust_builder
+  endopolypai:
+    path: packages/endopolypai
 
   xml: any
 dev_dependencies:
