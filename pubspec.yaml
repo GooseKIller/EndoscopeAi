@@ -45,3 +45,5 @@ dev_dependencies:
   xml: any
 flutter:
   uses-material-design: true
+  assets:
+  - assets/models/best_yolo.onnx
