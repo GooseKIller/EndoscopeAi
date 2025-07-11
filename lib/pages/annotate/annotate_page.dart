@@ -8,8 +8,14 @@ import 'package:flutter/rendering.dart';
 import 'package:path/path.dart' as p;
 
 import 'shapes.dart';
+import 'body_map.dart';
 
 enum Tool { pen, rect, circle, move }
+class _AnnotationSnapshot {
+  _AnnotationSnapshot(this.elements, this.mapSnap);
+  final List<Shape> elements;
+  final BodyMapSnapshot mapSnap;
+}
 
 class AnnotatePage extends StatefulWidget {
   const AnnotatePage({super.key, required this.imagePath});
@@ -19,10 +25,21 @@ class AnnotatePage extends StatefulWidget {
   State<AnnotatePage> createState() => _AnnotatePageState();
 }
 
+bool _mapEquals(BodyMapSnapshot a, BodyMapSnapshot b) {
+  if (a.organ != b.organ) return false;
+  if (a.markers.length != b.markers.length) return false;
+
+  for (var i = 0; i < a.markers.length; i++) {
+    if ((a.markers[i].rel - b.markers[i].rel).distance > 1e-6) return false;
+  }
+  return true;
+}
+
 class _AnnotatePageState extends State<AnnotatePage> {
   final _globalKey = GlobalKey();
   final _imgKey = GlobalKey();
   Size _imgSize = Size.zero;
+  final BodyMapController _mapCtrl = BodyMapController();
 
   static const _palette = [
     Color(0xFF0072B2),
@@ -41,13 +58,49 @@ class _AnnotatePageState extends State<AnnotatePage> {
   Shape? _selected;
   Offset? _lastRel;
 
-  final _history = <List<Shape>>[[]];
-  int _histIx = 0;
+  final List<_AnnotationSnapshot> _history = [];
+  int _histIx = -1;
+
   void _commit() {
     _history.removeRange(_histIx + 1, _history.length);
-    _history.add(_elements.map((e) => e.clone()).toList());
+    _history.add(
+      _AnnotationSnapshot(
+        _elements.map((e) => e.clone()).toList(),
+        _mapCtrl.snapshot(),
+      ),
+    );
     _histIx = _history.length - 1;
   }
+
+
+  @override
+  void initState() {
+    super.initState();
+    _mapCtrl.addListener(_onMapChanged);
+    _commit();
+  }
+  void _onMapChanged() {
+  final snap = _mapCtrl.snapshot();
+
+  // если карта не изменилась по сути — игнорируем
+  if (_history.isNotEmpty && _mapEquals(_history.last.mapSnap, snap)) return;
+
+  _commit();    // добавляем только если новое
+} 
+
+  @override
+ void dispose() {
+   _mapCtrl.removeListener(_onMapChanged); 
+    super.dispose();
+ }
+
+ bool _sameAsLast(BodyMapSnapshot snap) {
+  if (_history.isEmpty) return false;
+  final last = _history.last.mapSnap;
+  return last.organ == snap.organ &&
+         last.markers.length == snap.markers.length;
+}
+
 
   Offset _toRel(Offset p) {
     final dx = (p.dx / _imgSize.width).clamp(0.0, 1.0);
@@ -136,6 +189,16 @@ class _AnnotatePageState extends State<AnnotatePage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  AspectRatio(                               
+                  aspectRatio: 1,
+                  child: Card(
+                  elevation: 2,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                 child: BodyMapSection(controller: _mapCtrl),
+                ),
+              ),
+                  const SizedBox(height: 12),
+
                   Text(
                     'Заметки',
                     style: Theme.of(context).textTheme.titleMedium,
@@ -313,30 +376,34 @@ class _AnnotatePageState extends State<AnnotatePage> {
 
   // undo / redo
   void _undo() {
-    if (_histIx > 0) {
-      setState(() {
-        _histIx--;
-        _elements
-          ..clear()
-          ..addAll(_history[_histIx].map((e) => e.clone()));
-      });
-    }
+    if (_histIx <= 0) return;
+    _histIx--;
+    final snap = _history[_histIx];
+    setState(() {
+      _elements
+        ..clear()
+        ..addAll(snap.elements.map((e) => e.clone()));
+      _mapCtrl.restore(snap.mapSnap);
+    });
   }
 
+ 
   void _redo() {
-    if (_histIx < _history.length - 1) {
-      setState(() {
-        _histIx++;
-        _elements
-          ..clear()
-          ..addAll(_history[_histIx].map((e) => e.clone()));
-      });
-    }
+    if (_histIx >= _history.length - 1) return;
+    _histIx++;
+    final snap = _history[_histIx];
+    setState(() {
+      _elements
+        ..clear()
+        ..addAll(snap.elements.map((e) => e.clone()));
+      _mapCtrl.restore(snap.mapSnap);
+    });
   }
 
   // save SVG
   Future<void> _saveSvg() async {
     try {
+      
       final ui.Image img = await (_globalKey.currentContext!.findRenderObject()
               as RenderRepaintBoundary)
           .toImage(pixelRatio: 1.0);
@@ -366,14 +433,15 @@ class _AnnotatePageState extends State<AnnotatePage> {
         allowedExtensions: ['svg'],
       );
       if (path == null) return;
-      await File(path).writeAsString(svg);
+    final basePath = p.withoutExtension(path);  
+    await _mapCtrl.savePng(basePath);                            
       if (context.mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Saved: ${p.basename(path)}')));
       }
-    } catch (e) {
-      debugPrint('Save SVG error: $e');
+    } catch (e, st) {
+      debugPrint('Save SVG error: $e\n$st');
     }
   }
 }
