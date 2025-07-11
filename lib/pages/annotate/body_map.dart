@@ -185,7 +185,7 @@ extension on BodyPart {
       case BodyPart.duodenum:
         return 'ДПК';
       case BodyPart.colon:
-        return 'Кишка';
+        return 'Толстый кишечник';
     }
   }
 }
