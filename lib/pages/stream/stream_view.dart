@@ -6,7 +6,6 @@
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:endoscopy_ai/shared/widget/screenshot_feed.dart';
-import 'package:endoscopy_ai/shared/widget/spacing.dart';
 import 'package:provider/provider.dart';
 import 'package:endoscopy_ai/pages/stream/stream_model.dart';
 
@@ -94,54 +93,22 @@ class StreamPageView extends StatelessWidget {
                     },
                   ),
                 ),
-                createIndention(5, 5),
-                Expanded(
-                    child: Container(
-                  child: Column(
-                    children: [
                       ScreenshotFeed(onFetchScreenshots: () => model.shots),
                       const SizedBox(height: 8),
-                      Expanded(
-                        child: Card(
-                          child: Padding(
-                            padding: const EdgeInsets.all(8.0),
-                            child: ListView(
-                              children: [
-                                for (final t in model.transcripts) Text(t),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                )),
               ],
             );
           },
         ),
         // Решение для FloatingActionButton:
         // Используем Builder и Consumer для условного отображения
-        floatingActionButton: Builder(
-          builder: (context) {
-            final model = Provider.of<StreamPageModel>(context, listen: true);
-            if (!model.isInitialized || model.controller == null) {
-              return const SizedBox.shrink();
-            }
-            final buttons = <Widget>[
-              FloatingActionButton(
+        floatingActionButton: FloatingActionButton(
                 heroTag: 'shot_btn',
                 onPressed: () {
                   model.makeScreenshot();
                 },
                 child: const Icon(Icons.camera_alt),
               ),
-            ];
-
-            return Column(mainAxisSize: MainAxisSize.min, children: buttons);
-          },
         ),
-      ),
-    );
+      );
   }
 }

@@ -7,7 +7,7 @@ import 'package:endoscopy_ai/routes.dart';
 
 enum Command {
   delete,
-  rename,
+  //rename,
 }
 
 class RecordingsPageView {
@@ -48,29 +48,6 @@ class RecordingsPageView {
                                 _buildRecordingItem(context, recordings[index]),
                           ),
                   ),
-                  if (_editMode && _selectedPaths.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          ElevatedButton.icon(
-                            icon: Icon(Icons.delete),
-                            label: Text('Удалить выбранные'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.red,
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 20,
-                                vertical: 12,
-                              ),
-                            ),
-                            onPressed: () async {
-                              print('ON PRESSED IS NOT IMPLEMENTED');
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
                 ],
               );
             },
@@ -94,17 +71,17 @@ class RecordingsPageView {
             switch (command) {
               case Command.delete:
                 _model.deleteRecordings([recording]);
-              case Command.rename:
-                print('Rename?');
+              // case Command.rename:
+              //   print('Rename?');
               case null:
             }
           });
         },
         itemBuilder: (BuildContext context) => <PopupMenuEntry<Command>>[
-          PopupMenuItem<Command>(
-            value: Command.rename,
-            child: const Text('Переименовать'),
-          ),
+          // PopupMenuItem<Command>(
+          //   value: Command.rename,
+          //   child: const Text('Переименовать'),
+          // ),
           PopupMenuItem<Command>(
             value: Command.delete,
             child: const Text('Удалить'),

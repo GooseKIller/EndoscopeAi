@@ -76,7 +76,7 @@ class FileVideoPlayerPageStateView {
       child: Stack(
         alignment: Alignment.center,
         children: [
-          if (_model.isInitialized)
+          if (_model.isInitialized) 
             AspectRatio(
               aspectRatio: _model.controller!.value.aspectRatio,
               child: VideoPlayer(_model.controller!),
