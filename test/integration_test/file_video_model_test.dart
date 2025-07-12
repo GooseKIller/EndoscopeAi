@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
-import 'package:video_player/video_player.dart';
 import 'package:endoscopy_ai/pages/file_video/file_video_model.dart';
 import '../mocks/video_player_mock.dart';
 

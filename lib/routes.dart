@@ -11,5 +11,5 @@ class Routes {
   static const annotate = '/annotate';
   static const patientRegistration = '/patient';
 
-  static final root = homePage;
+  static const root = homePage;
 }

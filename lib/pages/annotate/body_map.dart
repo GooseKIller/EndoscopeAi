@@ -62,7 +62,7 @@ class BodyMapController extends ChangeNotifier {
     final bytes = await _shotCtrl!.capture(pixelRatio: 3);
     if (bytes == null) return;
 
-    final dir = Directory('${(await getApplicationDocumentsDirectory()).path}');
+    final dir = Directory((await getApplicationDocumentsDirectory()).path);
     if (!await dir.exists()) await dir.create(recursive: true);
 
     final file = File('${basePath}_${_organ!.name}.png');
@@ -175,7 +175,7 @@ class _BodyMapSectionState extends State<BodyMapSection> {
 enum BodyPart { oesophagus, stomach, duodenum, colon }
 
 extension on BodyPart {
-  String get assetPath => 'assets/body_maps/${name}.svg';
+  String get assetPath => 'assets/body_maps/$name.svg';
   String get label {
     switch (this) {
       case BodyPart.oesophagus:
