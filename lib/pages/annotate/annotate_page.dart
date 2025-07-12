@@ -23,6 +23,68 @@ class _AnnotatePageState extends State<AnnotatePage> {
   final _globalKey = GlobalKey();
   final _imgKey = GlobalKey();
   Size _imgSize = Size.zero;
+  final _controller = TextEditingController();
+
+
+@override
+  void initState() {
+    super.initState();
+    _loadAnnotations().then((_) { // Загружаем сначала аннотации
+    _controller.text = _notes; // Затем обновляем контроллер
+  });
+  }
+
+  String get _jsonPath {
+  final dir = p.dirname(widget.imagePath);
+  final baseName = p.basenameWithoutExtension(widget.imagePath);
+  return p.join(dir, '$baseName.json');
+}
+
+Future<void> _loadAnnotations() async {
+  try {
+    final jsonFile = File(_jsonPath);
+    if (await jsonFile.exists()) {
+      final json = jsonDecode(await jsonFile.readAsString());
+      if (mounted) {
+        setState(() {
+          _notes = json['text'] ?? '';
+          _controller.text = _notes;
+        });
+      }
+    }
+  } catch (e) {
+    debugPrint('Error loading annotations: $e');
+  }
+}
+
+Future<void> _saveAnnotations() async {
+  if (!mounted) return;
+  
+  try {
+    final jsonFile = File(_jsonPath);
+    Map<String, dynamic> jsonData = {};
+    
+    // Если файл существует, загружаем его данные
+    if (await jsonFile.exists()) {
+      jsonData = jsonDecode(await jsonFile.readAsString());
+    }
+    
+    // Обновляем только поле text
+    jsonData['text'] = _notes;
+    
+    // Сохраняем обратно
+    await jsonFile.writeAsString(jsonEncode(jsonData));
+    debugPrint('Annotations saved to ${jsonFile.path}');
+  } catch (e) {
+    debugPrint('Error saving annotations: $e');
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Ошибка сохранения: $e')),
+      );
+    }
+  }
+}
+
 
   static const _palette = [
     Color(0xFF0072B2),
@@ -34,6 +96,13 @@ class _AnnotatePageState extends State<AnnotatePage> {
 
   double _strokeWidth = 3.0;
   final List<double> _availableWidths = [1.0, 3.0, 5.0, 8.0, 12.0];
+
+  @override
+  void dispose() {
+    _saveAnnotations(); // Сохраняем перед уничтожением
+    _controller.dispose(); // Не забываем освободить контроллер
+    super.dispose();
+  }
 
   final _elements = <Shape>[];
   Shape? _draft;
@@ -60,6 +129,7 @@ class _AnnotatePageState extends State<AnnotatePage> {
 
   @override
   Widget build(BuildContext context) {
+    
     return Scaffold(
       appBar: AppBar(
         title: const Text('Annotation'),
@@ -150,13 +220,21 @@ class _AnnotatePageState extends State<AnnotatePage> {
                       child: Padding(
                         padding: const EdgeInsets.all(8.0),
                         child: TextField(
+                          controller: _controller,
+                          textDirection: TextDirection.ltr,
                           expands: true,
                           maxLines: null,
                           decoration: const InputDecoration(
                             border: InputBorder.none,
                             hintText: 'Напишите здесь что-нибудь...',
                           ),
-                          onChanged: (val) => setState(() => _notes = val),
+                          onChanged: (val) {
+                            setState(() {
+                              _notes = val;
+                              _controller.text = val; // Синхронизируем контроллер
+                            });
+                            _saveAnnotations();
+                          },
                         ),
                       ),
                     ),
@@ -377,6 +455,7 @@ class _AnnotatePageState extends State<AnnotatePage> {
     }
   }
 }
+
 
 // painter
 class _Painter extends CustomPainter {
