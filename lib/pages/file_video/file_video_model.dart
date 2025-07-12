@@ -1,7 +1,8 @@
 import 'dart:io';
 
-import 'package:endoscopy_ai/features/storage_system/save_manager.dart';
+import 'package:endoscopy_ai/features/storage_system/storage_system.dart';
 import 'package:endoscopy_ai/features/video_player/player_data.dart';
+import 'package:endoscopy_ai/shared/file_choser.dart';
 import 'package:endoscopy_ai/shared/utility/create_folder.dart';
 import 'package:endoscopy_ai/shared/widget/screenshot_preview.dart';
 import 'package:flutter/foundation.dart';
@@ -23,18 +24,16 @@ class FileVideoPlayerPageStateModel {
   bool _isInitialized = false;
   Duration currentPosition = Duration.zero;
   Duration totalDuration = Duration.zero;
-  final List<ScreenshotPreviewModel> _shots = []; // список миниатюр
+  List<ScreenshotPreviewModel> _shots = []; // список миниатюр
   Directory? _shotsDir; // директория …/screenshots
 
   bool get isPlaying => _isPlaying;
   bool get isValidFile => _isValidFile;
   bool get isInitialized => _isInitialized;
   List<ScreenshotPreviewModel> get shots => _shots;
-  
+
   // Return nullable controller
   VideoPlayerController? get controller => _controller;
-  
-  late final SaveManager _saveManager;
 
   // Public future for initialization tracking
   Future<void>? initializationFuture;
@@ -42,33 +41,31 @@ class FileVideoPlayerPageStateModel {
   FileVideoPlayerPageStateModel(this.setState, this._playerData);
 
   void initState() {
-    _saveManager = SaveManager(_playerData);
-    if (_playerData.filePath != null) {
-      _isValidFile = true;
-      
-      // Save this future to track initialization
-      initializationFuture = _saveVideoAndInitializeController();
-    }
+    _isValidFile = true;
+
+    // Save this future to track initialization
+    initializationFuture = _initializeController();
+
+    loadScreenshots();
   }
 
-  Future<void> _saveVideoAndInitializeController() async {
+  void loadScreenshots() {
+    StorageSystem.loadScreenshots(_playerData.recordEntry);
+
+    _shots = _playerData.recordEntry.screenshots
+        .map((scr) => ScreenshotPreviewModel(scr.imagePath, scr.time))
+        .toList();
+  }
+
+  Future<void> _initializeController() async {
     try {
-      // 1. First save the video to get the new path
-      await _saveManager.saveVideo(_playerData.filePath as String);
-      
-      // 2. Now get the new file path
-      final newFilePath = _saveManager.filePath;
-      
-      // 3. Initialize controller with the new file path
-      _controller = VideoPlayerController.file(File(newFilePath));
-      
-      // 4. Initialize video player
+      _controller = VideoPlayerController.file(File(_playerData.filePath));
+
       await _controller!.initialize();
-      
+
       // 5. Setup screenshot directory
-      _shotsDir = Directory(_saveManager.screenshotPath);
-      await createFolder(_shotsDir!);
-      
+      _shotsDir = Directory(_playerData.screenshotPath);
+
       // 6. Update UI and mark as initialized
       setState(() {
         totalDuration = _controller!.value.duration;
@@ -85,7 +82,7 @@ class FileVideoPlayerPageStateModel {
   // установить время на видео
   void seekTo(Duration pos) {
     if (!_isInitialized || _controller == null) return;
-    
+
     _controller!.seekTo(pos);
     if (_isPlaying) {
       togglePlayPause();
@@ -96,13 +93,13 @@ class FileVideoPlayerPageStateModel {
   void makeScreenshot() async {
     // Ensure controller is initialized and ready
     if (!_isInitialized || _controller == null || _shotsDir == null) return;
-    
+
     final width = _controller!.value.size.width.toInt();
     final height = _controller!.value.size.height.toInt();
     final controllerPosition = _controller!.value.position;
 
-    final fileName = '${DateTime.now().millisecondsSinceEpoch}.png';
-    final filePath = p.join(_shotsDir!.path, fileName);
+    final filePath = StorageSystem.saveScreenshot(
+        _playerData.recordEntry, controllerPosition);
 
     final screenshotVisual = ScreenshotPreviewModel(
       filePath,
@@ -150,7 +147,7 @@ class FileVideoPlayerPageStateModel {
   // смена состояния проигрывания
   void togglePlayPause() {
     if (!_isInitialized || _controller == null) return;
-    
+
     setState(() {
       _isPlaying = !_isPlaying;
       _isPlaying ? _controller!.play() : _controller!.pause();

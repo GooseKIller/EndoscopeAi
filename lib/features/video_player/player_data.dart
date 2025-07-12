@@ -1,8 +1,9 @@
-import 'package:endoscopy_ai/features/patient/record_data.dart';
+import 'package:endoscopy_ai/features/storage_system/record_entry.dart';
 
 class PlayerData {
-  final RecordData recordData;
-  final String? filePath;
+  final RecordEntry recordEntry;
+  String get filePath => recordEntry.videoPath;
+  String get screenshotPath => recordEntry.screenshotFolder;
 
-  PlayerData(this.recordData, this.filePath);
+  PlayerData(this.recordEntry);
 }

@@ -10,7 +10,6 @@ import 'dart:typed_data';
 import 'package:image/image.dart' as img;
 
 import 'package:camera/camera.dart';
-import 'package:endoscopy_ai/features/storage_system/save_manager.dart';
 import 'package:endoscopy_ai/features/storage_system/storage_system.dart';
 import 'package:endoscopy_ai/features/video_player/player_data.dart';
 import 'package:endoscopy_ai/shared/utility/create_folder.dart';
@@ -39,7 +38,6 @@ class StreamPageModel with ChangeNotifier {
   bool get paused => _isPaused;
   List<String> get transcripts => _transcripts;
 
-  late final SaveManager _saveManager;
   late final PlayerData _playerData;
   DateTime? _startTime;
   Duration _currentPosition = Duration.zero;
@@ -58,9 +56,7 @@ class StreamPageModel with ChangeNotifier {
 
   // `cameraDescription` -  данные о камере
   StreamPageModel(this._playerData, this.cameraDescription, this.setState) {
-    _saveManager = SaveManager(_playerData);
     _startTime = DateTime.now();
-    _prepareDirs();
     // Не инициализируем камеру в конструкторе, только в initialize()
   }
 
@@ -80,8 +76,7 @@ class StreamPageModel with ChangeNotifier {
     try {
       await _cameraInitializationFuture;
       await startRecording();
-      await _saveManager.prepareFolder();
-      _shotsDir = Directory(_saveManager.screenshotPath);
+      _shotsDir = Directory(_playerData.screenshotPath);
       await createFolder(_shotsDir!);
     } finally {
       _cameraInitializationFuture = null;
@@ -152,14 +147,6 @@ class StreamPageModel with ChangeNotifier {
     await _initializeCamera();
     if (!_isDisposed) {
       _startCameraCheckTimer();
-    }
-  }
-
-  Future<void> _prepareDirs() async {
-    final base = StorageSystem.systemPath;
-    _recordingsDir = Directory(p.join(base, 'recordings'));
-    if (!await _recordingsDir.exists()) {
-      await _recordingsDir.create(recursive: true);
     }
   }
 
@@ -247,6 +234,7 @@ class StreamPageModel with ChangeNotifier {
 
 // Сделать скриншот
   void makeScreenshot() async {
+    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////// TODO
     if (!_isInitialized || _controller == null || _shotsDir == null) return;
 
     // Получаем размеры превью (не фактические размеры снимка!)
@@ -290,11 +278,11 @@ class StreamPageModel with ChangeNotifier {
     }
   }
 
-  void _startTimer(){
+  void _startTimer() {
     setState(() {
       _isRunning = true;
       _startTime = DateTime.now().subtract(_currentPosition);
-      
+
       // Обновление времени каждые 100 миллисекунд
       _timer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
         setState(() {
@@ -330,10 +318,9 @@ class StreamPageModel with ChangeNotifier {
       _isPaused = false;
       _sttSub?.cancel();
 
-      final outFileName = '${DateTime.now().millisecondsSinceEpoch}.mp4';
-      final recordingsOut = p.join(_recordingsDir.path, outFileName);
-      await File(file.path).copy(recordingsOut);
-      String finalPath = recordingsOut;
+      final recordingOutput = _playerData.filePath;
+      await File(file.path).copy(recordingOutput);
+      String finalPath = recordingOutput;
 
       if (!_isDisposed) {
         notifyListeners();
@@ -347,15 +334,8 @@ class StreamPageModel with ChangeNotifier {
     }
   }
 
-  Future<void> saveStream() async {
-    final recordedPath = await stopRecording();
-    if (recordedPath == null) return;
-    File file = File(recordedPath);
-    await _saveManager.saveVideo(recordedPath);
-    if (await file.exists()) {
-      await file.delete();
-      print('${file.path} deleted!');
-    }
+  void saveStream() async {
+    print('saveStream is DEPRECATED');
   }
 
   // Освобождение ресурсов
@@ -369,7 +349,7 @@ class StreamPageModel with ChangeNotifier {
     _sttSub?.cancel();
     _cameraCheckTimer?.cancel();
 
-    if (_isRunning){
+    if (_isRunning) {
       _timer?.cancel;
     }
 

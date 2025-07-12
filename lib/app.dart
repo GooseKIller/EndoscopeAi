@@ -69,11 +69,24 @@ class _AppState extends State<App> {
         Routes.fileVideoPlayer: (context) => FileVideoPlayerPage(
             //ModalRoute.of(context)!.settings.arguments as RecordData,
             ModalRoute.of(context)!.settings.arguments as PlayerData),
-        Routes.patientRegistration: (context) =>
-            PatientRegistrationPage(
-              ModalRoute.of(context)!.settings.arguments as String
-            ),
+        Routes.patientRegistration: (context) {
+          final arguments = ModalRoute.of(context)!.settings.arguments;
+          // route назначения
+          String destinaiton;
 
+          // Если не null, то копируем этот файл
+          String? copyFrom = null;
+
+          if (arguments is Map<String, String>) {
+            final argumentMap = arguments as Map<String, String>;
+            copyFrom = argumentMap['copy_from'];
+            destinaiton = argumentMap['destinatoin']!;
+          } else {
+            destinaiton = arguments as String;
+          }
+
+          return PatientRegistrationPage(destinaiton, copyFrom: copyFrom);
+        },
         Routes.streamVideoPlayer: (context) {
           if (!_isCameraInitialized) {
             return const Scaffold(
@@ -99,7 +112,9 @@ class _AppState extends State<App> {
               ),
             );
           }
-          return StreamPage(camera: cameras.first, ModalRoute.of(context)!.settings.arguments as PlayerData);
+          return StreamPage(
+              camera: cameras.first,
+              ModalRoute.of(context)!.settings.arguments as PlayerData);
         },
         Routes.annotate: (context) {
           final path = ModalRoute.of(context)!.settings.arguments as String;
