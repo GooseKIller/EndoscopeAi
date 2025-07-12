@@ -96,8 +96,8 @@ class StreamPageView extends StatelessWidget {
                 ),
                 createIndention(5, 5),
                 Expanded(
-                  child: Container(
-                    child: Column(
+                    child: Container(
+                  child: Column(
                     children: [
                       ScreenshotFeed(onFetchScreenshots: () => model.shots),
                       const SizedBox(height: 8),
@@ -115,8 +115,7 @@ class StreamPageView extends StatelessWidget {
                       ),
                     ],
                   ),
-                )
-                ),
+                )),
               ],
             );
           },
@@ -138,14 +137,6 @@ class StreamPageView extends StatelessWidget {
                 child: const Icon(Icons.camera_alt),
               ),
             ];
-              buttons.add(
-                FloatingActionButton(
-                  heroTag: 'finish_rec_btn',
-                  backgroundColor: Colors.red,
-                  onPressed: model.saveStream,
-                  child: const Icon(Icons.stop),
-                ),
-              );
 
             return Column(mainAxisSize: MainAxisSize.min, children: buttons);
           },

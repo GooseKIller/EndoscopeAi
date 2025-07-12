@@ -246,9 +246,8 @@ class StreamPageModel with ChangeNotifier {
       print('Preview size is not available');
       return;
     }
-
-    final fileName = '${DateTime.now().millisecondsSinceEpoch}.png';
-    final filePath = p.join(_shotsDir!.path, fileName);
+    final filePath =
+        StorageSystem.saveScreenshot(_playerData.recordEntry, _currentPosition);
     print(_shotsDir!.path);
 
     final screenshotVisual = ScreenshotPreviewModel(
@@ -319,7 +318,7 @@ class StreamPageModel with ChangeNotifier {
       _sttSub?.cancel();
 
       final recordingOutput = _playerData.filePath;
-      await File(file.path).copy(recordingOutput);
+      await copyFile(file.path, recordingOutput);
       String finalPath = recordingOutput;
 
       if (!_isDisposed) {
@@ -332,10 +331,6 @@ class StreamPageModel with ChangeNotifier {
       }
       return null;
     }
-  }
-
-  void saveStream() async {
-    print('saveStream is DEPRECATED');
   }
 
   // Освобождение ресурсов

@@ -26,7 +26,7 @@ class _StreamPageState extends State<StreamPage> {
   bool _isModelInitialized = false;
   late final PlayerData _playerData;
 
-  _StreamPageState(PlayerData? playerData){
+  _StreamPageState(PlayerData? playerData) {
     if (playerData == null) {
       throw ErrorDescription("NULL RECORD DATA");
     }
@@ -46,7 +46,10 @@ class _StreamPageState extends State<StreamPage> {
       // создание визуальной части
       model: _model,
       camera: widget.camera,
-      onBackPressed: () => Navigator.pop(context),
+      onBackPressed: () async {
+        await _model.stopRecording();
+        Navigator.pop(context);
+      },
     );
 
     _initializeModel();
