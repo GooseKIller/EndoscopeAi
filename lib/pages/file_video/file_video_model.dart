@@ -63,6 +63,9 @@ class FileVideoPlayerPageStateModel {
 
       await _controller!.initialize();
 
+      _isPlaying = true;
+      _controller?.play();
+
       // 5. Setup screenshot directory
       _shotsDir = Directory(_playerData.screenshotPath);
 
