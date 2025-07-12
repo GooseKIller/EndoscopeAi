@@ -6,8 +6,6 @@ import 'dart:math';
 
 import '../patient/record_data.dart';
 import 'storage_fs_operations.dart' as sfs;
-import 'package:path/path.dart' as p;
-import 'package:endoscopy_ai/features/patient/record_data.dart';
 
 // Перевод времени в вид читаемый json
 List<int> _durationToList(Duration durr) => <int>[
