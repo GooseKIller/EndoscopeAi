@@ -7,7 +7,7 @@ import 'app.dart';
 void main() async {
   fvp.registerWith(); // инициаллизация fvp
   WidgetsFlutterBinding.ensureInitialized(); // еще какаято инициализация
-  StorageSystem.createRootFolder();
+  await StorageSystem.initialize();
 
   runApp(const App());
 }

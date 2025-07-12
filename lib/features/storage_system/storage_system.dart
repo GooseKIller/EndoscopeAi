@@ -1,96 +1,176 @@
+// ====================================================
+//  Сиситема сохранения-загрузки данных о записях с диска
+// ====================================================
+import 'dart:convert';
 import 'dart:io';
 
-import 'package:endoscopy_ai/shared/utility/count_files.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:endoscopy_ai/shared/utility/create_folder.dart';
+import '../patient/record_data.dart';
+import 'record_entry.dart';
+import 'storage_fs_operations.dart' as sfs;
+export 'storage_fs_operations.dart' show copyFile;
 
 class StorageSystem {
-  static String _systemPath = '';
-  int _id;
-  DateTime _operationTime;
-  String _patientPath = '';
-  String _filePath = '';
-  String _fileName = '';
+  final String _storageRootFolder;
 
-  late Future<void> _initialization;
+  StorageSystem._(this._storageRootFolder);
 
-  static String get systemPath {
-    if (_systemPath != '') {
-      return _systemPath;
-    } else {
-      createRootFolder();
-      return _systemPath;
+  // =========================SINGELTON===========
+  static StorageSystem? _instance = null;
+
+  // Инициализация системы:
+  // инициализация папки для данных,
+  //
+  static Future<void> initialize() async {
+    final rootPath = await sfs.generateStorageRootPath();
+    await sfs.createFolderIfNotExist(rootPath);
+
+    _instance = StorageSystem._(rootPath);
+  }
+
+  // =========================GETTERS===========
+  // Возвращает путь к папке с данными приложения
+  static String get storateRootPath => _instance!._storageRootFolder;
+  // Возвращает папу к папке с данными приложения
+  static Directory get storateRootDirecotry =>
+      Directory(_instance!._storageRootFolder);
+
+  // =========================METHODS===========
+  // -------------------------CREATION----------
+  // Создает папку с записями (если нужно), и возвращает RecordEntry
+  static Future<RecordEntry> createRecordData(RecordData data) async {
+    final recordPath = sfs.generateRecordPath(storateRootPath, data);
+    await sfs.createFolderIfNotExist(recordPath);
+
+    final recordDirectory = Directory(recordPath);
+    final entry = RecordEntry(data: data, recordDirectory: recordDirectory);
+
+    await sfs.createFolderIfNotExist(entry.screenshotFolder);
+
+    return entry;
+  }
+
+  // Перезаписывает данные в $id.json , данные: время скиншота, аннотации
+  static void updateScreenshotData(ScreenshotEntry entry) {
+    final json = jsonEncode(entry.toJson());
+    final data = File(entry.dataPath);
+
+    data.writeAsStringSync(json);
+  }
+
+  // Генерирует путь к скриншоту и создает json файл где пишет его время
+  static String saveScreenshot(RecordEntry entry, Duration time) {
+    final screenshot = ScreenshotEntry.create(
+        screenshotFolder: entry.screenshotFolder,
+        imageId: entry.getNextId(),
+        time: time);
+    entry.addScreenshot(screenshot);
+    updateScreenshotData(screenshot);
+    return screenshot.imagePath;
+  }
+
+  // -------------------------LOADING-----------
+
+  // Загружает один скриншот
+  // Возвращает null если нет соответствующего json файла
+  static ScreenshotEntry? loadSingleScreenshot(RecordEntry entry, int id) {
+    final (image, data) =
+        sfs.generateScreenshotPaths(entry.screenshotFolder, id);
+
+    final file = File(data);
+    if (!file.existsSync()) {
+      print('ERROR: SCREENSHOT WITH ID $id have not data file, skipping!!!!');
+      return null;
     }
+
+    final json = jsonDecode(file.readAsStringSync());
+
+    return ScreenshotEntry.fromJson(
+        screenshotFolder: entry.screenshotFolder, imageId: id, json: json);
   }
 
-  StorageSystem(this._id, this._operationTime) {
-    _initialization = preparePatientFolder();
-  }
+  // Загрузка скриншотов
+  static void loadScreenshots(RecordEntry entry) {
+    final files =
+        Directory(entry.screenshotFolder).listSync(followLinks: false);
+    final image = files
+        .where((entry) => sfs.isScreenshotImageName(p.basename(entry.path)))
+        .map((entry) => entry.path)
+        .toList();
 
-  static Future<void> createRootFolder() async {
-    final directory = Directory(p.join(
-        (await getApplicationDocumentsDirectory()).path, 'EndoscopyAI App'));
-    print(directory.path);
-    _systemPath = directory.path;
-    await createFolder(directory);
-  }
+    List<ScreenshotEntry> screenshots = [];
+    for (final imgPath in image) {
+      final id =
+          int.parse(RegExp(r'^\d+').firstMatch(p.basename(imgPath))!.group(0)!);
 
-  Future<void> preparePatientFolder() async {
-    final String directoryPath = p.join(systemPath, 'id_$_id');
-    final Directory directory = Directory(directoryPath);
-    await createFolder(directory);
-    _patientPath = directoryPath;
-  }
-
-  Future<void> prepareFilePath(String file) async {
-    final String directoryPath = p.join(
-        systemPath,
-        'id_$_id',
-        '${_operationTime.day}-${_operationTime.month}-${_operationTime.year}_${_operationTime.hour}-${_operationTime.minute}',
-        file);
-    _patientPath = p.join(systemPath, 'id_$_id');
-    final Directory directory = Directory(directoryPath);
-    await createFolder(directory);
-    _filePath = directoryPath;
-  }
-
-  Future<bool> createNewFileFolder() async {
-    if (_fileName != '') return true;
-    await _initialization; // Ensure patient folder is ready
-    int ind = await countFiles(_patientPath);
-    if (ind == -1) {
-      return false;
-    }
-    int index = 0;
-    if (ind > 0) {
-      while (true) {
-        final path = p.join(_patientPath, 'video-$ind');
-        Directory directory = Directory(path);
-        if (directory.existsSync()) {
-          ind++;
-          continue;
-        } else {
-          index = ind;
-          break;
-        }
+      final scr = loadSingleScreenshot(entry, id);
+      if (scr != null) {
+        screenshots.add(scr);
       }
     }
-    if (index == 0) {
-      _fileName = 'video';
-      await prepareFilePath(_fileName);
-    } else {
-      _fileName = 'video-$index';
-      await prepareFilePath(_fileName);
+
+    entry.setScreenshots(screenshots);
+  }
+
+  // Проходится по папкам и получение записей
+  static Future<List<RecordEntry>> listRecords() async {
+    final rootDirectory = storateRootDirecotry;
+    final entries = <RecordEntry>[];
+
+    // все пациенты
+    final patients = (await rootDirectory.list(followLinks: false).toList())
+        .where(
+          (entry) =>
+              sfs.isPatientFolderName(p.basename(entry.path)) &&
+              Directory(entry.path).existsSync(),
+        )
+        .toList();
+
+    // проход по всем пациентам
+    for (final patientDir in patients) {
+      // парсинг id
+      final folderName = p.basename(patientDir.path);
+      final patientId = int.parse(
+        RegExp(r'\d+$').firstMatch(folderName)!.group(0)!,
+      );
+
+      // все записи пациента
+      final records =
+          (await Directory(patientDir.path).list(followLinks: false).toList())
+              .where(
+                (entry) =>
+                    sfs.isPatientRecordFolderName(p.basename(entry.path)) &&
+                    Directory(entry.path).existsSync(),
+              )
+              .toList();
+
+      // проход по всем записям пациента
+      for (final recordDir in records) {
+        // парсинг даты (нет блин нетя)
+        final recordDirectory = Directory(recordDir.path);
+        final String recordFolderName = p.basename(recordDir.path);
+        final tokens = recordFolderName.split('-').map(int.parse).toList();
+        final date = DateTime(
+          tokens[0],
+          tokens[1],
+          tokens[2],
+          tokens[3],
+          tokens[4],
+        );
+
+        entries.add(
+          RecordEntry(
+              data: RecordData(id: patientId, time: date),
+              recordDirectory: recordDirectory),
+        );
+      }
     }
-    return true;
+
+    entries.sort((a, b) => a.data.time.compareTo(b.data.time));
+    return entries;
   }
 
-  String get filePath {
-    return p.join(_filePath, '$_fileName.mp4');
-  }
-
-  String get screenshotPath {
-    return p.join(_filePath, 'screenshot');
-  }
+  // -------------------------OTHER-------------
 }
