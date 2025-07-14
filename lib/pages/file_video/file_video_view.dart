@@ -33,6 +33,10 @@ class FileVidePlayerPageStateView {
         padding: const EdgeInsets.all(5),
         child: Row(
           children: [
+            IconButton(
+                onPressed: _model.captureShit,
+                icon: Icon(Icons.breakfast_dining)),
+
             /// ВИДЕО
             _buildVideo(context),
 

@@ -3,6 +3,7 @@
 //  Модель, содержащая дфнные и логику, не связанную с UI
 // ====================================================
 import 'dart:io';
+import 'package:endoscopy_ai/features/ai/endo_ai.dart';
 import 'package:flutter/foundation.dart';
 import 'package:fvp/fvp.dart';
 import 'package:image/image.dart' as img;
@@ -144,7 +145,8 @@ class FileVideoPlayerPageStateModel {
   }
 
   @visibleForTesting
-  Future<void> get initializeFuture => _initializeVideoPlayerFuture ?? Future.value();
+  Future<void> get initializeFuture =>
+      _initializeVideoPlayerFuture ?? Future.value();
 
   @visibleForTesting
   set controllerForTest(VideoPlayerController controller) {
@@ -164,4 +166,20 @@ class FileVideoPlayerPageStateModel {
     }
   }
 
+  Future<void> captureShit() async {
+    final width = _controller.value.size.width.toInt();
+    final height = _controller.value.size.height.toInt();
+    final pixelData = await _controller.snapshot(
+      width: width,
+      height: height,
+    );
+
+    final data =
+        await EndoAi.predict(width: width, height: height, pixels: pixelData!);
+
+    print('FOUND ${data.length}');
+    for (var x in data) {
+      print('--$x');
+    }
+  }
 }
