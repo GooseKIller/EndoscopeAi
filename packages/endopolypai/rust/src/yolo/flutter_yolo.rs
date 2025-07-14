@@ -56,18 +56,32 @@ pub fn yolo_new_mem(
     Ok(YoloHandle(yolo.unwrap()))
 }
 
-#[frb]
-pub fn yolo_predict(
-    yolo_handle: &mut YoloHandle,
-    width: u32,
-    height: u32,
-    pixels: Vec<u8>
-) -> Result<Vec<FFIDetectionResult>> {
-    let buffer = ImageBuffer::from_raw(width, height, pixels)
-        .ok_or_else(|| anyhow!("Invalid pixel buffer length")).expect("HOW");
-    let img = DynamicImage::ImageRgb8(buffer);
+ #[frb]
+ pub fn yolo_predict(
+     yolo_handle: &mut YoloHandle,
+     width: u32,
+     height: u32,
+     pixels: Vec<u8>
+ ) -> Result<Vec<FFIDetectionResult>> {
+     // Create image buffer with proper error handling
+     let buffer = ImageBuffer::from_raw(width, height, pixels)
+     .ok_or_else(|| {
+          ort::Error::from(Box::new(
+              std::io::Error::new(
+                  std::io::ErrorKind::InvalidData, 
+                  "Invalid pixel buffer length"
+              )
+          ) as Box<dyn std::error::Error + Send + Sync>)
+      })?;
+ 
+     // Convert to RGB and save debug image
+     let img_rgb = DynamicImage::ImageRgba8(buffer).into_rgb8();
+     
+     // Create DynamicImage from RGB buffer for prediction
+     let img_dyn = DynamicImage::ImageRgb8(img_rgb);
+
     let yolo = &mut yolo_handle.0;
-    let dets = yolo.predict(&img)?;
+    let dets = yolo.predict(&img_dyn)?;
     let ffi = dets.into_iter()
         .map(|d| FFIDetectionResult{
             x1: d.bbox.x1,
@@ -79,4 +93,5 @@ pub fn yolo_predict(
         }).collect();
     Ok(ffi)
 }
+
 
