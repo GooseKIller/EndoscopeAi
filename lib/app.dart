@@ -1,6 +1,7 @@
 // ====================================================
 //  Главное окно приложения, на котором производится отрисовка
 // ====================================================
+import 'package:endoscopy_ai/features/storage_system/record_entry.dart';
 import 'package:endoscopy_ai/features/video_player/player_data.dart';
 import 'package:endoscopy_ai/pages/patient_registration/patient_registration_page.dart';
 
@@ -117,8 +118,9 @@ class _AppState extends State<App> {
               ModalRoute.of(context)!.settings.arguments as PlayerData);
         },
         Routes.annotate: (context) {
-          final path = ModalRoute.of(context)!.settings.arguments as String;
-          return AnnotatePage(imagePath: path);
+          final path =
+              ModalRoute.of(context)!.settings.arguments as ScreenshotEntry;
+          return AnnotatePage(screenshotData: path);
         },
       },
     );

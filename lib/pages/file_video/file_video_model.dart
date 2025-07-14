@@ -53,7 +53,7 @@ class FileVideoPlayerPageStateModel {
     StorageSystem.loadScreenshots(_playerData.recordEntry);
 
     _shots = _playerData.recordEntry.screenshots
-        .map((scr) => ScreenshotPreviewModel(scr.imagePath, scr.time))
+        .map((scr) => ScreenshotPreviewModel(scr, scr.time))
         .toList();
   }
 
@@ -101,11 +101,11 @@ class FileVideoPlayerPageStateModel {
     final height = _controller!.value.size.height.toInt();
     final controllerPosition = _controller!.value.position;
 
-    final filePath = StorageSystem.saveScreenshot(
+    final screenshotData = StorageSystem.saveScreenshot(
         _playerData.recordEntry, controllerPosition);
 
     final screenshotVisual = ScreenshotPreviewModel(
-      filePath,
+      screenshotData,
       controllerPosition,
       state: ScreenshotPreviewState.pending,
     );
@@ -132,13 +132,13 @@ class FileVideoPlayerPageStateModel {
 
       final pngBytes = await compute((im) => img.encodePng(im), image);
 
-      final outFile = File(filePath);
+      final outFile = File(screenshotData.imagePath);
       await outFile.writeAsBytes(pngBytes);
 
       setState(() {
         screenshotVisual.state = ScreenshotPreviewState.good;
       });
-      print("Сохранено $filePath");
+      print("Сохранено $screenshotData");
     } catch (error) {
       setState(() {
         screenshotVisual.state = ScreenshotPreviewState.error;

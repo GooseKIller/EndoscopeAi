@@ -71,16 +71,18 @@ class RecordEntry {
 
 // Содержит данные о скриншоте
 class ScreenshotEntry {
-  static const _jsonTextKey = 'text';
-  static const _jsonDrawingKey = 'draw';
-  static const _jsonTimeKey = 'time';
+  static const _jsonTextKey = 'text'; // текст аннотации
+  static const _jsonDrawingKey = 'draw'; // то что доктор нарисовал
+  static const _jsonTimeKey = 'time'; // время операции
+  static const _jsonLocationKey = 'loc'; // положение в кишках)))))
 
   final int imageId;
   late final String imagePath;
   late final String dataPath;
   final Duration time;
-  final String annotationText;
-  final String drawingData;
+  String annotationText;
+  String drawingData;
+  String location; // меняйте - это положение в кишке))))
 
   ScreenshotEntry._({
     required String screenshotFolder,
@@ -88,6 +90,7 @@ class ScreenshotEntry {
     required this.time,
     required this.annotationText,
     required this.drawingData,
+    required this.location,
   }) {
     final gen = sfs.generateScreenshotPaths(screenshotFolder, imageId);
     imagePath = gen.$1;
@@ -98,6 +101,7 @@ class ScreenshotEntry {
         _jsonTimeKey: _durationToList(time),
         _jsonTextKey: annotationText,
         _jsonDrawingKey: drawingData,
+        _jsonLocationKey: location,
       };
   factory ScreenshotEntry.fromJson(
       {required String screenshotFolder,
@@ -110,13 +114,15 @@ class ScreenshotEntry {
     } else {
       json[_jsonTimeKey] = _listToDuration(json[_jsonTimeKey] as List<dynamic>);
     }
+    if (!json.containsKey(_jsonLocationKey)) json[_jsonLocationKey] = '';
 
     return ScreenshotEntry._(
         screenshotFolder: screenshotFolder,
         imageId: imageId,
         time: json[_jsonTimeKey],
         annotationText: json[_jsonTextKey],
-        drawingData: json[_jsonDrawingKey]);
+        drawingData: json[_jsonDrawingKey],
+        location: json[_jsonLocationKey]);
   }
 
   factory ScreenshotEntry.create({
@@ -129,5 +135,6 @@ class ScreenshotEntry {
           imageId: imageId,
           time: time,
           annotationText: '',
-          drawingData: '');
+          drawingData: '',
+          location: '');
 }

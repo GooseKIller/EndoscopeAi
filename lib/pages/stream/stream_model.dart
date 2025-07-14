@@ -246,12 +246,12 @@ class StreamPageModel with ChangeNotifier {
       print('Preview size is not available');
       return;
     }
-    final filePath =
+    final screenshotData =
         StorageSystem.saveScreenshot(_playerData.recordEntry, _currentPosition);
     print(_shotsDir!.path);
 
     final screenshotVisual = ScreenshotPreviewModel(
-      filePath,
+      screenshotData,
       _currentPosition!,
       state: ScreenshotPreviewState.pending,
     );
@@ -266,8 +266,8 @@ class StreamPageModel with ChangeNotifier {
       final image = img.decodeJpg(jpegBytes)!;
       final pngBytes = img.encodePng(image);
 
-      await File(filePath).writeAsBytes(pngBytes);
-      print("Скриншот сохранён в файл: $filePath");
+      await File(screenshotData.imagePath).writeAsBytes(pngBytes);
+      print("Скриншот сохранён в файл: $screenshotData");
       setState(() {
         screenshotVisual.state = ScreenshotPreviewState.good;
       });

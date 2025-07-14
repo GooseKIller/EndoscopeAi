@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' as ui;
 
+import 'package:endoscopy_ai/features/storage_system/record_entry.dart';
+import 'package:endoscopy_ai/features/storage_system/storage_system.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -9,11 +11,15 @@ import 'package:path/path.dart' as p;
 
 import 'shapes.dart';
 
+const _keyHistLst = 'hist';
+const _keyHistIdx = 'idx';
+const _keyDraft = 'draft';
+
 enum Tool { pen, rect, circle, move }
 
 class AnnotatePage extends StatefulWidget {
-  const AnnotatePage({super.key, required this.imagePath});
-  final String imagePath;
+  const AnnotatePage({super.key, required this.screenshotData});
+  final ScreenshotEntry screenshotData;
 
   @override
   State<AnnotatePage> createState() => _AnnotatePageState();
@@ -24,67 +30,96 @@ class _AnnotatePageState extends State<AnnotatePage> {
   final _imgKey = GlobalKey();
   Size _imgSize = Size.zero;
   final _controller = TextEditingController();
+  late final ScreenshotEntry _screenshotData;
 
-
-@override
+  @override
   void initState() {
     super.initState();
-    _loadAnnotations().then((_) { // Загружаем сначала аннотации
-    _controller.text = _notes; // Затем обновляем контроллер
-  });
+    _screenshotData = widget.screenshotData;
+
+    // вызов отрисовки
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadAnnotations();
+      setState(() {});
+    });
   }
 
-  String get _jsonPath {
-  final dir = p.dirname(widget.imagePath);
-  final baseName = p.basenameWithoutExtension(widget.imagePath);
-  return p.join(dir, '$baseName.json');
-}
-
-Future<void> _loadAnnotations() async {
-  try {
-    final jsonFile = File(_jsonPath);
-    if (await jsonFile.exists()) {
-      final json = jsonDecode(await jsonFile.readAsString());
-      if (mounted) {
-        setState(() {
-          _notes = json['text'] ?? '';
+  void _loadAnnotations() {
+    try {
+      setState(() {
+        if (mounted) {
+          _notes = _screenshotData.annotationText;
           _controller.text = _notes;
-        });
+
+          // загрузить данные рисования
+          final rawJson = _screenshotData.drawingData as String;
+          if (rawJson == '') {
+            // ничего не сохранено
+            _history.clear();
+            _history.add([]);
+            _histIx = 0;
+          } else {
+            // загружаем, то что сохранено
+            final drawingJson = jsonDecode(rawJson) as Map<String, dynamic>;
+            _histIx = drawingJson[_keyHistIdx] as int;
+
+            final draftJson = drawingJson[_keyDraft] as String;
+
+            _draft = (draftJson == '') ? null : Shape.fromJson(drawingJson);
+
+            final newHist = (drawingJson[_keyHistLst] as List<dynamic>)
+                .map((x) => (x as List<dynamic>)
+                    .map((y) => Shape.fromJson(y as Map<String, dynamic>))
+                    .toList())
+                .toList();
+
+            // восстанивить историю
+            _history.clear();
+            _history.addAll(newHist);
+
+            // поставить на отрисовку
+            _elements
+              ..clear()
+              ..addAll(_history[_histIx].map((e) => e.clone()));
+          }
+        }
+      });
+    } catch (e) {
+      debugPrint('Error loading annotations: $e');
+    }
+  }
+
+  void _saveAnnotations() {
+    if (!mounted) return;
+
+    try {
+      // Обновляем данные
+      _screenshotData.annotationText = _notes;
+
+      // сохраняем осторию
+      final decodedHist =
+          (_history).map((x) => x.map((x) => x.toJson()).toList()).toList();
+      final decodedDraft = _draft?.toJson() ?? '';
+      final drawingData = {
+        _keyHistLst: decodedHist,
+        _keyHistIdx: _histIx,
+        _keyDraft: decodedDraft,
+      };
+      _screenshotData.drawingData = jsonEncode(drawingData);
+
+      // Сохраняем обратно
+      StorageSystem.updateScreenshotData(_screenshotData);
+
+      debugPrint('Annotations saved');
+    } catch (e) {
+      debugPrint('Error saving annotations: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Ошибка сохранения: $e')),
+        );
       }
     }
-  } catch (e) {
-    debugPrint('Error loading annotations: $e');
   }
-}
-
-Future<void> _saveAnnotations() async {
-  if (!mounted) return;
-  
-  try {
-    final jsonFile = File(_jsonPath);
-    Map<String, dynamic> jsonData = {};
-    
-    // Если файл существует, загружаем его данные
-    if (await jsonFile.exists()) {
-      jsonData = jsonDecode(await jsonFile.readAsString());
-    }
-    
-    // Обновляем только поле text
-    jsonData['text'] = _notes;
-    
-    // Сохраняем обратно
-    await jsonFile.writeAsString(jsonEncode(jsonData));
-    debugPrint('Annotations saved to ${jsonFile.path}');
-  } catch (e) {
-    debugPrint('Error saving annotations: $e');
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Ошибка сохранения: $e')),
-      );
-    }
-  }
-}
-
 
   static const _palette = [
     Color(0xFF0072B2),
@@ -129,7 +164,6 @@ Future<void> _saveAnnotations() async {
 
   @override
   Widget build(BuildContext context) {
-    
     return Scaffold(
       appBar: AppBar(
         title: const Text('Annotation'),
@@ -174,7 +208,7 @@ Future<void> _saveAnnotations() async {
                               child: Stack(
                                 children: [
                                   Image.file(
-                                    File(widget.imagePath),
+                                    File(widget.screenshotData.imagePath),
                                     key: _imgKey,
                                   ),
                                   Positioned.fill(
@@ -231,7 +265,8 @@ Future<void> _saveAnnotations() async {
                           onChanged: (val) {
                             setState(() {
                               _notes = val;
-                              _controller.text = val; // Синхронизируем контроллер
+                              _controller.text =
+                                  val; // Синхронизируем контроллер
                             });
                             _saveAnnotations();
                           },
@@ -420,7 +455,8 @@ Future<void> _saveAnnotations() async {
           .toImage(pixelRatio: 1.0);
       final w = img.width, h = img.height;
 
-      final b64 = base64Encode(await File(widget.imagePath).readAsBytes());
+      final b64 = base64Encode(
+          await File(widget.screenshotData.imagePath).readAsBytes());
 
       final shapesXml = _elements
           .map((e) => e.toSvg(Size(w.toDouble(), h.toDouble())).toXmlString())
@@ -439,7 +475,7 @@ Future<void> _saveAnnotations() async {
       final path = await FilePicker.platform.saveFile(
         dialogTitle: 'Save annotation',
         fileName:
-            'annotate_${p.basenameWithoutExtension(widget.imagePath)}.svg',
+            'annotate_${p.basenameWithoutExtension(widget.screenshotData.imagePath)}.svg',
         type: FileType.custom,
         allowedExtensions: ['svg'],
       );
@@ -455,7 +491,6 @@ Future<void> _saveAnnotations() async {
     }
   }
 }
-
 
 // painter
 class _Painter extends CustomPainter {

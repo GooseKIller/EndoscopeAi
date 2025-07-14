@@ -59,14 +59,14 @@ class StorageSystem {
   }
 
   // Генерирует путь к скриншоту и создает json файл где пишет его время
-  static String saveScreenshot(RecordEntry entry, Duration time) {
+  static ScreenshotEntry saveScreenshot(RecordEntry entry, Duration time) {
     final screenshot = ScreenshotEntry.create(
         screenshotFolder: entry.screenshotFolder,
         imageId: entry.getNextId(),
         time: time);
     entry.addScreenshot(screenshot);
     updateScreenshotData(screenshot);
-    return screenshot.imagePath;
+    return screenshot;
   }
 
   // -------------------------LOADING-----------
