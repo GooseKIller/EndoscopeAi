@@ -28,8 +28,10 @@ class EndoAi {
     await epi.RustLib.init();
     print('Succesfully initialized endopolypai backend!');
     print('Initializing endopolypai model...');
-    final model = await epi.EndoAI.createFromAsset(assetModelPath: _modelPath);
+    final model = await epi.EndoAI.createFromAsset(
+        assetModelPath: _modelPath, classLabels: ["Полип", "Другое"]);
     print('Succesfully initialized endopolypai model!');
+
     _instance = EndoAi._(model);
   }
 }
