@@ -8,14 +8,28 @@ import 'rust/yolo/flutter_yolo.dart';
 
 class EndoAI {
   // параметры моделт
-  static const classLabels = ['polyp', 'other'];
-  static const confidenceThreshold = 0.25;
-  static const nmsThreshold = 0.7;
+  static const _defaultClassLabels = ['polyp', 'other'];
+  static const _defaultConfidenceThreshold = 0.25;
+  static const _defaultNmsThreshold = 0.7;
+
+  late final List<String> classLabels;
+  late final double confidenceThreshhold;
+  late final double nmsThreshold;
 
   // rust handle
   final YoloHandle _handle;
 
-  EndoAI._(this._handle);
+  EndoAI._(
+    this._handle, {
+    List<String>? classLabels,
+    double? confidenceThreshhold,
+    double? nmsThreshold,
+  }) {
+    this.classLabels = classLabels ?? _defaultClassLabels;
+    this.confidenceThreshhold =
+        confidenceThreshhold ?? _defaultConfidenceThreshold;
+    this.nmsThreshold = nmsThreshold ?? _defaultNmsThreshold;
+  }
 
   // Поиск полипов на изображении
   // `width`, `height` - ширина и высота изображения
