@@ -15,12 +15,12 @@ class EndoAi {
 
   EndoAi._(this._model);
 
-  Future<List<epi.FFIDetectionResult>> predict({
+  static Future<List<epi.FFIDetectionResult>> predict({
     required int width,
     required int height,
     required Uint8List pixels,
   }) =>
-      _model.predict(width: width, height: height, pixels: pixels);
+      _instance!._model.predict(width: width, height: height, pixels: pixels);
 
   static Future<void> initialize() async {
     if (_instance != null) throw AiError('EndoAi is already inialized');
