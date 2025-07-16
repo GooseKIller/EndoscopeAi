@@ -2,6 +2,7 @@
 //  Страница для вопроизведения зяписанного видео
 //  Логика, содержащая логику, связанную с UI
 // ====================================================
+import 'package:endoscopy_ai/shared/widget/ai_annotation_overlay.dart';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 import 'package:endoscopy_ai/pages/file_video/file_video_model.dart';
@@ -78,9 +79,13 @@ class FileVidePlayerPageStateView {
         alignment: Alignment.center,
         children: [
           AspectRatio(
-            aspectRatio: _model.controller.value.aspectRatio,
-            child: VideoPlayer(_model.controller),
-          ),
+              aspectRatio: _model.controller.value.aspectRatio,
+              child: Stack(children: [
+                VideoPlayer(_model.controller),
+                AiAnnotationOverlay(
+                    videoSize: _model.videoSize,
+                    foundFeatures: _model.deetectedPolyps)
+              ])),
           if (_model.showControls) PlayPauseButton(model: _model),
           if (_model.showControls) CustomSlider(modelVideoPlayer: _model),
         ],

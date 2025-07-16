@@ -3,6 +3,7 @@
 //  Модель, содержащая дфнные и логику, не связанную с UI
 // ====================================================
 import 'dart:io';
+import 'dart:ui';
 import 'package:endoscopy_ai/features/ai/endo_ai.dart';
 import 'package:flutter/foundation.dart';
 import 'package:fvp/fvp.dart';
@@ -29,10 +30,15 @@ class FileVideoPlayerPageStateModel {
   final List<ScreenshotPreviewModel> _shots = []; // список миниатюр
   late Directory _shotsDir; // директория …/screenshots
 
+  List<FFIDetectionResult> _deetectedPolyps = [];
+  List<FFIDetectionResult> get deetectedPolyps => _deetectedPolyps;
+
   bool get isPlaying => _isPlaying;
   bool get isValidFile => _isValidFile;
   List<ScreenshotPreviewModel> get shots => _shots;
   VideoPlayerController get controller => _controller;
+
+  Size get videoSize => _controller.value.size;
 
   void initState() {
     _prepareDir();
@@ -73,8 +79,8 @@ class FileVideoPlayerPageStateModel {
 
   // сделать скриншот
   void makeScreenshot() async {
-    final width = _controller.value.size.width.toInt();
-    final height = _controller.value.size.height.toInt();
+    final width = videoSize.width.toInt();
+    final height = videoSize.height.toInt();
     final controllerPosition = _controller.value.position;
 
     // Определяем вывод скриншота
@@ -167,8 +173,8 @@ class FileVideoPlayerPageStateModel {
   }
 
   Future<void> captureShit() async {
-    final width = _controller.value.size.width.toInt();
-    final height = _controller.value.size.height.toInt();
+    final width = videoSize.width.toInt();
+    final height = videoSize.height.toInt();
     final pixelData = await _controller.snapshot(
       width: width,
       height: height,
@@ -177,9 +183,14 @@ class FileVideoPlayerPageStateModel {
     final data =
         await EndoAi.predict(width: width, height: height, pixels: pixelData!);
 
+    setState(() {
+      _deetectedPolyps = data;
+    });
+
     print('FOUND ${data.length}');
     for (var x in data) {
-      print('--$x');
+      print(
+          '\t\t${x.label}(${(x.confidence * 100).toInt()}%): (${x.x1}, ${x.y1})->(${x.x2}, ${x.y2})');
     }
   }
 }
