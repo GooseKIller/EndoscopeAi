@@ -12,24 +12,10 @@ class EndoAI {
   static const _defaultConfidenceThreshold = 0.25;
   static const _defaultNmsThreshold = 0.7;
 
-  late final List<String> classLabels;
-  late final double confidenceThreshhold;
-  late final double nmsThreshold;
-
   // rust handle
   final YoloHandle _handle;
 
-  EndoAI._(
-    this._handle, {
-    List<String>? classLabels,
-    double? confidenceThreshhold,
-    double? nmsThreshold,
-  }) {
-    this.classLabels = classLabels ?? _defaultClassLabels;
-    this.confidenceThreshhold =
-        confidenceThreshhold ?? _defaultConfidenceThreshold;
-    this.nmsThreshold = nmsThreshold ?? _defaultNmsThreshold;
-  }
+  EndoAI._(this._handle);
 
   // Поиск полипов на изображении
   // `width`, `height` - ширина и высота изображения
@@ -51,27 +37,35 @@ class EndoAI {
   // 3) Загрузка rust handle
   static Future<EndoAI> createFromAsset({
     required String assetModelPath,
+    List<String>? classLabels,
+    double? confidenceThreshold,
+    double? nmsThreshold,
   }) async {
     final byteData = await rootBundle.load(assetModelPath);
     final modelData = byteData.buffer.asUint8List();
 
     final handle = await yoloNewMem(
       mem: modelData,
-      classLabels: classLabels,
-      confidenceThreshold: confidenceThreshold,
-      nmsThreshold: nmsThreshold,
+      classLabels: classLabels ?? _defaultClassLabels,
+      confidenceThreshold: confidenceThreshold ?? _defaultConfidenceThreshold,
+      nmsThreshold: nmsThreshold ?? _defaultNmsThreshold,
     );
 
     return EndoAI._(handle);
   }
 
   // Создание обертки по пути внешнего файла
-  static Future<EndoAI> createFromFile({required String modelPath}) async {
+  static Future<EndoAI> createFromFile({
+    required String modelPath,
+    List<String>? classLabels,
+    double? confidenceThreshold,
+    double? nmsThreshold,
+  }) async {
     final handle = await yoloNew(
       modelPath: modelPath,
-      classLabels: classLabels,
-      confidenceThreshold: confidenceThreshold,
-      nmsThreshold: nmsThreshold,
+      classLabels: classLabels ?? _defaultClassLabels,
+      confidenceThreshold: confidenceThreshold ?? _defaultConfidenceThreshold,
+      nmsThreshold: nmsThreshold ?? _defaultNmsThreshold,
     );
 
     return EndoAI._(handle);
