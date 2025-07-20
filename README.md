@@ -6,7 +6,11 @@
 [![Issues][issues-shield]][issues-url]
 [![Unlicense License][license-shield]][license-url]
 
-
+## Quick Start Guide (for customer)
+1. Download the latest release from the [Live Build](https://github.com/uSs3ewa/EndoscopeBETA/releases/latest).
+2. Unzip or run the installer on the clinic PC.
+3. Plug in your endoscope camera and launch the app.
+4. Follow on-screen prompts to start capturing video.
 
 # EndoscopeAi
 
@@ -132,6 +136,15 @@ The application should start reliably whenever it is needed for an examination.
 - **Response measure**: loads without error
 
 See [app_load_test.dart](test/integration_test/app_load_test.dart).
+
+## Troubleshooting FAQ (for customer)
+**The app won't start**
+- Ensure the endoscope camera is connected before launching.
+- If the Python STT server fails, run `pip install -r python_stt_server/requirements.txt`.
+
+**Video capture is laggy**
+- Close other apps that use the camera.
+- Verify your PC meets the minimum specs in the release notes.
 
 ## Architecture
 
