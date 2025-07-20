@@ -14,6 +14,7 @@ import 'package:endoscopy_ai/shared/widget/screenshot_preview.dart';
 import 'package:endoscopy_ai/shared/camera/windows_camera_helper.dart';
 import 'package:path/path.dart' as p;
 import 'package:endoscopy_ai/pages/recordings/recordings_model.dart';
+import 'package:endoscopy_ai/voice_control.dart';
 
 class StreamPageModel with ChangeNotifier {
   final CameraDescription cameraDescription; // данные о камере
@@ -34,6 +35,8 @@ class StreamPageModel with ChangeNotifier {
   bool get paused => _isPaused;
   List<String> get transcripts => _transcripts;
 
+  late VoiceControl _voiceControl;
+
   // Геттеры/сеттеры
   bool get isInitialized => _isInitialized;
   bool get cameraAvailable => _cameraAvailable; // Геттер для доступности камеры
@@ -43,7 +46,50 @@ class StreamPageModel with ChangeNotifier {
   // `cameraDescription` -  данные о камере
   StreamPageModel({required this.cameraDescription}) {
     _prepareDirs();
+    _initializeVoiceControl(); 
     // Не инициализируем камеру в конструкторе, только в initialize()
+  }
+
+
+
+void _initializeVoiceControl() {
+  _voiceControl = VoiceControl(
+    onCommand: (cmd) {
+      print("Executing voice command: $cmd");
+      switch (cmd) {
+        case 'start_recording':
+          if (!_isRecording) startRecording();
+          break;
+        case 'stop_recording':
+          if (_isRecording) stopRecording();
+          break;
+        case 'take_photo':
+          takePicture().then((file) {
+            if (file != null) saveScreenshot(file);
+          });
+          break;
+      }
+      notifyListeners();
+    },
+    onError: (error) => print("Voice control error: $error"),
+  );
+}
+
+  void _handleVoiceCommand(String command) {
+    switch (command) {
+      case 'start_recording':
+        if (!_isRecording) startRecording();
+        break;
+      case 'stop_recording':
+        if (_isRecording) stopRecording();
+        break;
+      case 'take_photo':
+        takePicture().then((file) {
+          if (file != null) saveScreenshot(file);
+        });
+        break;
+    }
+    notifyListeners();
   }
 
   // Инициализация контроллера камеры с Windows-специфичными фиксами
@@ -303,6 +349,8 @@ class StreamPageModel with ChangeNotifier {
     _isInitialized = false;
     _isPaused = false;
     _isRecording = false;
+
+    _voiceControl.dispose();
 
     super.dispose();
   }
