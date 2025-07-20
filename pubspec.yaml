@@ -26,14 +26,17 @@ dependencies:
   camera_platform_interface: ^2.10.0
   ffmpeg_kit_flutter: ^5.1.0 
   permission_handler: ^10.4.4
-  flutter_rust_bridge: ^2.10.0
+  flutter_rust_bridge: 2.10.0
   shared_preferences: ^2.2.2
   mockito: ^5.4.6
   plugin_platform_interface: ^2.1.8
+  endopolypai:
+    path: packages/endopolypai
   flutter_svg: ^2.2.0
   intl: ^0.18.1
   web_socket_channel: ^3.0.3
 
+  xml: any
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -41,7 +44,10 @@ dev_dependencies:
   integration_test:
     sdk: flutter
 
+  matcher: any
+  xml: any
 flutter:
   uses-material-design: true
   assets:
-    - assets/body_maps/
+  - assets/models/best_optimized.onnx
+  - assets/body_maps/

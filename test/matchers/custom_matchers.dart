@@ -4,8 +4,7 @@ import 'package:matcher/matcher.dart';
 Matcher anyDuration() => isA<Duration>();
 
 /// Matches Duration with specific seconds
-Matcher durationWithSeconds(int seconds) => 
-    isA<Duration>().having(
+Matcher durationWithSeconds(int seconds) => isA<Duration>().having(
       (d) => d.inSeconds,
       'seconds',
       seconds,

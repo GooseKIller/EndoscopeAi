@@ -1,5 +1,7 @@
 import 'dart:io';
-
+import 'dart:ui';
+import 'package:endoscopy_ai/features/ai/endo_ai.dart';
+import 'package:endoscopy_ai/shared/utility/repeating_task_executer.dart';
 import 'package:endoscopy_ai/features/storage_system/storage_system.dart';
 import 'package:endoscopy_ai/features/video_player/player_data.dart';
 import 'package:endoscopy_ai/shared/file_choser.dart';
@@ -13,6 +15,9 @@ import 'package:path/path.dart' as p;
 
 // Модель содержащая, данные и логику
 class FileVideoPlayerPageStateModel {
+  final Duration _aiUpdateRate = Duration(milliseconds: 100);
+
+  FileVideoPlayerPageStateModel(this.setState, this.recordData);
   final PlayerData _playerData;
   final Function setState;
 
@@ -27,6 +32,9 @@ class FileVideoPlayerPageStateModel {
   List<ScreenshotPreviewModel> _shots = []; // список миниатюр
   Directory? _shotsDir; // директория …/screenshots
 
+  List<FFIDetectionResult> _deetectedPolyps = [];
+  List<FFIDetectionResult> get deetectedPolyps => _deetectedPolyps;
+
   bool get isPlaying => _isPlaying;
   bool get isValidFile => _isValidFile;
   bool get isInitialized => _isInitialized;
@@ -39,6 +47,11 @@ class FileVideoPlayerPageStateModel {
   Future<void>? initializationFuture;
 
   FileVideoPlayerPageStateModel(this.setState, this._playerData);
+
+  late final RepeatingTaskExecuter _aiExecture;
+  bool get showAi => _aiExecture.isRunning;
+  set showAi(bool value) => _aiExecture.isRunning = value;
+  Size get videoSize => _controller.value.size;
 
   void initState() {
     _isValidFile = true;
@@ -74,6 +87,7 @@ class FileVideoPlayerPageStateModel {
         totalDuration = _controller!.value.duration;
         _isInitialized = true;
       });
+      _aiExecture.start();
     } catch (e) {
       debugPrint('Ошибка инициализации видео: $e');
       setState(() {
@@ -97,9 +111,10 @@ class FileVideoPlayerPageStateModel {
     // Ensure controller is initialized and ready
     if (!_isInitialized || _controller == null || _shotsDir == null) return;
 
-    final width = _controller!.value.size.width.toInt();
-    final height = _controller!.value.size.height.toInt();
+    final width = videoSize.width.toInt();
+    final height = videoSize.height.toInt();
     final controllerPosition = _controller!.value.position;
+
 
     final screenshotData = StorageSystem.saveScreenshot(
         _playerData.recordEntry, controllerPosition);
@@ -159,6 +174,56 @@ class FileVideoPlayerPageStateModel {
 
   // освобождение ресурсов
   void dispose() {
-    _controller?.dispose();
+    _aiExecture.dispose();
+    _controller.dispose();
+  }
+
+  @visibleForTesting
+  Future<void> get initializeFuture =>
+      _initializeVideoPlayerFuture ?? Future.value();
+
+  @visibleForTesting
+  set controllerForTest(VideoPlayerController controller) {
+    _controller = controller;
+    _initializeVideoPlayerFuture = controller.initialize().then((_) {
+      if (controller.value.isInitialized) {
+        currentPosition = controller.value.position;
+        totalDuration = controller.value.duration;
+      }
+    });
+  }
+
+  @visibleForTesting
+  static Future<void> prepareTestDir(Directory dir) async {
+    if (!await dir.exists()) {
+      await dir.create(recursive: true);
+    }
+  }
+
+  Future<void> aiCapture() async {
+    if (!showAi) return;
+    final width = videoSize.width.toInt();
+    final height = videoSize.height.toInt();
+    final pixelData = await _controller.snapshot(
+      width: width,
+      height: height,
+    );
+
+    List<FFIDetectionResult>? data;
+    if (_aiExecture.isRunning) {
+      data = await EndoAi.predict(
+          width: width, height: height, pixels: pixelData!);
+    }
+    if (_aiExecture.isRunning && data != null) {
+      setState(() {
+        _deetectedPolyps = data!;
+      });
+    }
+
+    print('FOUND ${data?.length ?? 0}');
+    for (var x in data ?? []) {
+      print(
+          '\t\t${x.label}(${(x.confidence * 100).toInt()}%): (${x.x1}, ${x.y1})->(${x.x2}, ${x.y2})');
+    }
   }
 }

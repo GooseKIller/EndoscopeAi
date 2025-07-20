@@ -2,7 +2,7 @@
 //  Страница для вопроизведения зяписанного видео
 //  Логика, содержащая логику, связанную с UI
 // ====================================================
-
+import 'package:endoscopy_ai/shared/widget/ai_annotation_overlay.dart';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 import 'package:endoscopy_ai/pages/file_video/file_video_model.dart';
@@ -47,20 +47,41 @@ class FileVideoPlayerPageStateView {
           ],
         ),
       ),
-      floatingActionButton: _createScreenshotButton(),
+      floatingActionButton: _createButtons(),
     );
   }
 
   // Создание ливетирующей кнопки для скриншотов
-  Widget _createScreenshotButton() {
-    return FloatingActionButton(
-      onPressed: _model.isInitialized ? _model.makeScreenshot : null,
-      backgroundColor: const Color.fromARGB(255, 252, 232, 232),
-      child: const Icon(
-        Icons.camera_alt,
-        color: Color.fromARGB(255, 65, 63, 63),
-      ),
-    );
+  Widget _createButtons() {
+    return Builder(
+        builder: (context) => Column(mainAxisSize: MainAxisSize.min, children: [
+              // вкл выкл ии
+              FloatingActionButton(
+                  heroTag: 'ai_btn',
+                  tooltip: (_model.showAi) ? 'Выключить ИИ' : 'Включить ИИ',
+                  onPressed: () => setState(() {
+                        _model.showAi = !_model.showAi;
+                        print('AI togge ${_model.showAi}');
+                      }),
+                  backgroundColor: const Color.fromARGB(255, 252, 232, 232),
+                  child: Icon(
+                    (_model.showAi)
+                        ? Icons.tips_and_updates_rounded
+                        : Icons.tips_and_updates_outlined,
+                    color: const Color.fromARGB(255, 65, 63, 63),
+                  )),
+              // скриншотоделка
+              FloatingActionButton(
+                heroTag: 'scr_btn',
+                //  label: Text('Make screenshot'),
+                onPressed: _model.makeScreenshot,
+                backgroundColor: const Color.fromARGB(255, 252, 232, 232),
+                child: Icon(
+                  Icons.camera_alt,
+                  color: const Color.fromARGB(255, 65, 63, 63),
+                ),
+              )
+            ]));
   }
 
   // создание жестового распознавания
@@ -76,11 +97,17 @@ class FileVideoPlayerPageStateView {
       child: Stack(
         alignment: Alignment.center,
         children: [
+
           if (_model.isInitialized) 
             AspectRatio(
-              aspectRatio: _model.controller!.value.aspectRatio,
-              child: VideoPlayer(_model.controller!),
-            )
+              aspectRatio: _model.controller.value.aspectRatio,
+              child: Stack(children: [
+                VideoPlayer(_model.controller),
+                AiAnnotationOverlay(
+                    videoSize: _model.videoSize,
+                    foundFeatures: _model.deetectedPolyps,
+                    shouldPaint: _model.showAi)
+              ]))
           else
             const Center(child: CircularProgressIndicator()),
           if (_model.showControls && _model.isInitialized)

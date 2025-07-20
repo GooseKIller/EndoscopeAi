@@ -110,6 +110,7 @@ class StreamPageView extends StatelessWidget {
                 },
                 child: const Icon(Icons.camera_alt),
               ),
+
         ),
       );
   }

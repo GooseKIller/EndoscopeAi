@@ -1,6 +1,7 @@
 // ====================================================
 //  Главное окно приложения, на котором производится отрисовка
 // ====================================================
+
 import 'package:endoscopy_ai/features/storage_system/record_entry.dart';
 import 'package:endoscopy_ai/features/video_player/player_data.dart';
 import 'package:endoscopy_ai/pages/patient_registration/patient_registration_page.dart';
@@ -56,6 +57,7 @@ class _AppState extends State<App> {
 
   @override
   Widget build(BuildContext context) {
+    // инициализация компонентов
     return MaterialApp(
       title: 'EncodescopeAI',
       theme: ThemeData(
@@ -63,10 +65,12 @@ class _AppState extends State<App> {
           seedColor: const Color.fromARGB(255, 90, 6, 201),
         ),
       ),
-      initialRoute: Routes.root,
+      home: FeatureInitializer(),
+      // initialRoute: Routes.root,
       routes: {
         Routes.recordings: (context) => RecordingsPage(),
         Routes.homePage: (context) => const HomePage(),
+
         Routes.fileVideoPlayer: (context) => FileVideoPlayerPage(
             //ModalRoute.of(context)!.settings.arguments as RecordData,
             ModalRoute.of(context)!.settings.arguments as PlayerData),
@@ -122,6 +126,7 @@ class _AppState extends State<App> {
               ModalRoute.of(context)!.settings.arguments as ScreenshotEntry;
           return AnnotatePage(screenshotData: path);
         },
+        Routes.initializer: (context) => FeatureInitializer(),
       },
     );
   }
