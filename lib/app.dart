@@ -5,6 +5,7 @@
 import 'package:endoscopy_ai/features/storage_system/record_entry.dart';
 import 'package:endoscopy_ai/features/video_player/player_data.dart';
 import 'package:endoscopy_ai/pages/patient_registration/patient_registration_page.dart';
+import 'package:endoscopy_ai/pages/feature_initializer/feature_initializer.dart';
 
 import 'routes.dart';
 

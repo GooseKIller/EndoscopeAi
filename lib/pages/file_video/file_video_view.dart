@@ -100,9 +100,9 @@ class FileVideoPlayerPageStateView {
 
           if (_model.isInitialized) 
             AspectRatio(
-              aspectRatio: _model.controller.value.aspectRatio,
+              aspectRatio: _model.controller!.value.aspectRatio,
               child: Stack(children: [
-                VideoPlayer(_model.controller),
+                VideoPlayer(_model.controller!),
                 AiAnnotationOverlay(
                     videoSize: _model.videoSize,
                     foundFeatures: _model.deetectedPolyps,

@@ -17,7 +17,7 @@ import 'package:path/path.dart' as p;
 class FileVideoPlayerPageStateModel {
   final Duration _aiUpdateRate = Duration(milliseconds: 100);
 
-  FileVideoPlayerPageStateModel(this.setState, this.recordData);
+  FileVideoPlayerPageStateModel(this.setState, this._playerData);
   final PlayerData _playerData;
   final Function setState;
 
@@ -46,15 +46,15 @@ class FileVideoPlayerPageStateModel {
   // Public future for initialization tracking
   Future<void>? initializationFuture;
 
-  FileVideoPlayerPageStateModel(this.setState, this._playerData);
-
   late final RepeatingTaskExecuter _aiExecture;
   bool get showAi => _aiExecture.isRunning;
   set showAi(bool value) => _aiExecture.isRunning = value;
-  Size get videoSize => _controller.value.size;
+  Size get videoSize => _controller!.value.size;
 
   void initState() {
     _isValidFile = true;
+
+    _aiExecture = RepeatingTaskExecuter(refreshTime: _aiUpdateRate, task: aiCapture);
 
     // Save this future to track initialization
     initializationFuture = _initializeController();
@@ -175,9 +175,10 @@ class FileVideoPlayerPageStateModel {
   // освобождение ресурсов
   void dispose() {
     _aiExecture.dispose();
-    _controller.dispose();
+    _controller?.dispose();
   }
 
+  Future<void>? _initializeVideoPlayerFuture = null;
   @visibleForTesting
   Future<void> get initializeFuture =>
       _initializeVideoPlayerFuture ?? Future.value();
@@ -204,7 +205,7 @@ class FileVideoPlayerPageStateModel {
     if (!showAi) return;
     final width = videoSize.width.toInt();
     final height = videoSize.height.toInt();
-    final pixelData = await _controller.snapshot(
+    final pixelData = await _controller?.snapshot(
       width: width,
       height: height,
     );
