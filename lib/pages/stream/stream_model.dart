@@ -9,11 +9,15 @@ import 'dart:io';
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter/services.dart';  
+import 'dart:async' show unawaited;
 import 'package:path_provider/path_provider.dart';
 import 'package:endoscopy_ai/shared/widget/screenshot_preview.dart';
 import 'package:endoscopy_ai/shared/camera/windows_camera_helper.dart';
 import 'package:path/path.dart' as p;
 import 'package:endoscopy_ai/pages/recordings/recordings_model.dart';
+
+import 'package:endoscopy_ai/features/stt/whisper_cpp_process.dart';
 
 class StreamPageModel with ChangeNotifier {
   final CameraDescription cameraDescription; // данные о камере
@@ -29,6 +33,11 @@ class StreamPageModel with ChangeNotifier {
   bool _isPaused = false;
   late final Directory _recordingsDir;
   bool _isDisposed = false; // Флаг для предотвращения операций после dispose
+
+  WhisperCppProcess? _sttProc;
+  bool _sttActive = false;
+  bool get voiceControlActive => _sttActive;
+
 
   bool get recording => _isRecording;
   bool get paused => _isPaused;
@@ -49,7 +58,7 @@ class StreamPageModel with ChangeNotifier {
   // Инициализация контроллера камеры с Windows-специфичными фиксами
   Future<void> _initializeCamera() async {
     if (_isDisposed) return;
-
+     
     // Если уже инициализируемся, ждем завершения
     if (_cameraInitializationFuture != null) {
       await _cameraInitializationFuture;
@@ -80,6 +89,32 @@ class StreamPageModel with ChangeNotifier {
         resolution: ResolutionPreset.medium,
         enableAudio: true,
       );
+      final String errorChannel =
+    'dev.flutter.pigeon.camera_windows.CameraEventApi.error.${_controller!.cameraId}';
+
+// Глушим сообщения об ошибках (они роняют Shell)
+    ServicesBinding.instance.defaultBinaryMessenger.setMessageHandler(
+    errorChannel,
+    (ByteData? _) async => null,
+);
+
+  
+  // ---------- SAFE WINDOWS FIXES ----------
+  // 1) подписка на ошибки камеры
+ // 1. ловим ошибки через value.hasError
+_controller!.addListener(() {
+  if (_controller!.value.hasError) {
+    debugPrint('benign camera error: ${_controller!.value.errorDescription}');
+    // ничего не делаем, чтобы не упало
+  }
+});
+
+// 2. вызовы, не реализованные на Windows
+try {
+  await _controller!.setFlashMode(FlashMode.off);
+  await _controller!.setExposureMode(ExposureMode.auto);
+  await _controller!.setFocusMode(FocusMode.auto);
+} catch (_) {/* ignore */}
 
       if (_isDisposed) {
         await _disposeCamera();
@@ -127,7 +162,9 @@ class StreamPageModel with ChangeNotifier {
 
   Future<void> initialize() async {
     if (_isDisposed) return;
+    unawaited(_startVoiceControl());
     await _initializeCamera();
+    
     if (!_isDisposed) {
       _startCameraCheckTimer();
     }
@@ -285,6 +322,31 @@ class StreamPageModel with ChangeNotifier {
       return null;
     }
   }
+    Future<void> _startVoiceControl() async {
+  _sttProc = WhisperCppProcess(
+    exePath: p.join(Directory.current.path,
+        'third_party/whisper.cpp/build/bin/whisper-command.exe'),
+    modelPath: p.join(Directory.current.path,
+        'third_party/whisper.cpp/models/ggml-small.bin'),
+    onCmd: (cmd) {
+      switch (cmd) {
+        case VoiceCmd.start:    startRecording(); break;
+        case VoiceCmd.stop:     stopRecording();  break;
+        case VoiceCmd.snapshot: takePicture();    break;
+        default: break;
+      }
+    },
+  );
+  await _sttProc!.start();
+}
+
+  Future<void> _stopVoiceControl() async {
+    if (!_sttActive) return;
+    await _sttProc?.stop();
+    _sttProc = null;
+    _sttActive = false;
+    if (!_isDisposed) notifyListeners();
+  }
 
   // Освобождение ресурсов
   @override
@@ -303,7 +365,7 @@ class StreamPageModel with ChangeNotifier {
     _isInitialized = false;
     _isPaused = false;
     _isRecording = false;
-
+    _stopVoiceControl();
     super.dispose();
   }
 

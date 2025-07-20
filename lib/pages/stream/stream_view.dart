@@ -38,6 +38,7 @@ class StreamPageView extends StatelessWidget {
     required this.onPictureTaken,
   });
 
+
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider.value(

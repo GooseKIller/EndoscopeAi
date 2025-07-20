@@ -7,6 +7,7 @@ list(APPEND FLUTTER_PLUGIN_LIST
   file_selector_windows
   fvp
   permission_handler_windows
+  record_windows
   video_player_win
 )
 
