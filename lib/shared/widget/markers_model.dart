@@ -32,7 +32,7 @@ class MarkersModel {
     );
 
     modelVideoPlayer.currentPosition = Duration(milliseconds: tappedMs.toInt());
-    modelVideoPlayer.controller.seekTo(modelVideoPlayer.currentPosition);
+    modelVideoPlayer.controller!.seekTo(modelVideoPlayer.currentPosition);
   }
 
   void seekToMarker(TapDownDetails details) {
@@ -69,7 +69,7 @@ class MarkersModel {
       modelVideoPlayer.currentPosition = Duration(
         milliseconds: tappedMs.toInt(),
       );
-      modelVideoPlayer.controller.seekTo(modelVideoPlayer.currentPosition);
+      modelVideoPlayer.controller!.seekTo(modelVideoPlayer.currentPosition);
     }
   }
 }

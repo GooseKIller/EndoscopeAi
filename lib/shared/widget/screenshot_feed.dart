@@ -29,22 +29,35 @@ class ScreenshotFeed extends StatelessWidget {
   Widget build(BuildContext context) {
     _screenshotsCache = _fetchScreenshots(); // загружаем скриншоты
 
-    return Expanded(
-      child: Card(
+    return Container(
         color: const Color.fromARGB(255, 228, 226, 226),
         child: Padding(
           padding: EdgeInsets.all(7),
           child: _screenshotsCache.isEmpty
-              ? const Center(child: Text('Нет скриншотов'))
-              : ListView.builder(
+          ? ConstrainedBox(constraints: const BoxConstraints(
+                  minHeight: 700,
+                  minWidth: 150,
+                  maxHeight: 2500, // Ограничиваем высоту
+                  maxWidth: 150,
+                ),
+          child: Center(child: const Text('Нет скриншотов')))
+            : ConstrainedBox( // Добавляем ограничение
+                constraints: const BoxConstraints(
+                  minHeight: 700,
+                  minWidth: 150,
+                  maxHeight: 2500, // Ограничиваем высоту
+                  maxWidth: 150,
+                ),
+                child: ListView.builder(
                   itemCount: _screenshotsCache.length,
                   itemBuilder: (ctx, i) => ScreenshotPreviewView(
                     model: _screenshotsCache[i],
                     onTap: _onTap,
                   ),
+                  addAutomaticKeepAlives: false, // для производительности
                 ),
+            )
         ),
-      ),
-    );
+      );
   }
 }

@@ -9,14 +9,15 @@ import 'package:endoscopy_ai/pages/file_video/file_video_model.dart';
 import 'package:endoscopy_ai/shared/widget/custom_slider.dart';
 import 'package:endoscopy_ai/shared/widget/play_pause_button.dart';
 import 'package:endoscopy_ai/shared/widget/screenshot_feed.dart';
-import 'package:endoscopy_ai/shared/widget/spacing.dart';
 
+// ====================================================
 //  Логика, содержащая логику, связанную с UI
-class FileVidePlayerPageStateView {
+// ====================================================
+class FileVideoPlayerPageStateView {
   final Function setState; // callback для обновления состояния
   final FileVideoPlayerPageStateModel _model;
 
-  FileVidePlayerPageStateView(this.setState, this._model);
+  FileVideoPlayerPageStateView(this.setState, this._model);
 
   Widget _buildVideo(BuildContext context) =>
       _createGestureRecognition(context);
@@ -35,15 +36,14 @@ class FileVidePlayerPageStateView {
         child: Row(
           children: [
             /// ВИДЕО
-            _buildVideo(context),
-
-            createIndention(5, 5),
+            Expanded(child: _buildVideo(context)),
 
             /// ЛЕНТА СКРИНШОТОВ
-            ScreenshotFeed(
-              onFetchScreenshots: () => _model.shots,
-              onTap: _model.seekTo,
-            ),
+            if (_model.isInitialized)
+              ScreenshotFeed(
+                onFetchScreenshots: () => _model.shots,
+                onTap: _model.seekTo,
+              ),
           ],
         ),
       ),
@@ -84,18 +84,22 @@ class FileVidePlayerPageStateView {
             ]));
   }
 
-  // создание.... эээ.. чего это....
-  Widget _createGestureRecognition(context) {
+  // создание жестового распознавания
+  Widget _createGestureRecognition(BuildContext context) {
     return GestureDetector(
       onTap: () {
-        setState(() {
-          _model.showControls = !_model.showControls;
-        });
+        if (_model.isInitialized) {
+          setState(() {
+            _model.showControls = !_model.showControls;
+          });
+        }
       },
       child: Stack(
         alignment: Alignment.center,
         children: [
-          AspectRatio(
+
+          if (_model.isInitialized) 
+            AspectRatio(
               aspectRatio: _model.controller.value.aspectRatio,
               child: Stack(children: [
                 VideoPlayer(_model.controller),
@@ -103,17 +107,16 @@ class FileVidePlayerPageStateView {
                     videoSize: _model.videoSize,
                     foundFeatures: _model.deetectedPolyps,
                     shouldPaint: _model.showAi)
-              ])),
-          if (_model.showControls) PlayPauseButton(model: _model),
-          if (_model.showControls) CustomSlider(modelVideoPlayer: _model),
+              ]))
+          else
+            const Center(child: CircularProgressIndicator()),
+          if (_model.showControls && _model.isInitialized)
+            PlayPauseButton(model: _model),
+          if (_model.showControls && _model.isInitialized)
+            CustomSlider(modelVideoPlayer: _model),
         ],
       ),
     );
-  }
-
-  // открывает окно с ошибкой
-  Widget _createErrorMessageBox(AsyncSnapshot snapshot) {
-    return Center(child: Text('Ошибка загрузки видео: ${snapshot.error}'));
   }
 
   // создает штуку, где пишутся ошибки

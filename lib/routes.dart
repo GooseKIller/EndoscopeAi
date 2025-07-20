@@ -12,5 +12,5 @@ class Routes {
   static const patientRegistration = '/patient';
   static const initializer = '/init';
 
-  static final root = homePage;
+  static const root = homePage;
 }

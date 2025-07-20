@@ -12,16 +12,15 @@ class CustomTimeFormField extends StatefulWidget {
   CustomTimeFormField(this._model, this._text, this._onSave, {super.key});
 
   @override
-  State<CustomTimeFormField> createState() => _CustomTimeFormFieldState(_model, _text, _onSave);
+  State<CustomTimeFormField> createState() => _CustomTimeFormFieldState(_text, _onSave);
 }
 
 class _CustomTimeFormFieldState extends State<CustomTimeFormField>{
-  late final PatientRegistrationModel _model;
   late final String _text;
   DateTime time;
   final void Function(DateTime) _onSave;
 
-  _CustomTimeFormFieldState(this._model, this._text, this._onSave)
+  _CustomTimeFormFieldState(this._text, this._onSave)
       : time = DateTime.now();
 
   // This function displays a CupertinoModalPopup with a reasonable fixed height
@@ -64,10 +63,9 @@ class _CustomTimeFormFieldState extends State<CustomTimeFormField>{
             context,
             CupertinoDatePicker(
               initialDateTime: time,
-              mode: CupertinoDatePickerMode.time,
               use24hFormat: true,
               // This is called when the user changes the time.. 
-              onDateTimeChanged: (DateTime newValue) => setState(() => _onSave(newValue)),
+              onDateTimeChanged: (DateTime newValue) => setState(() {time = newValue; _onSave(newValue);}),
             ),
           ),
           // In this example, the time value is formatted manually.

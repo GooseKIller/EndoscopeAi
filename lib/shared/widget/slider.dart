@@ -45,7 +45,7 @@ class _CustomSliderWithMarksState extends State<CustomSliderWithMarks> {
         // Слой со слайдером
         getSlider(),
         // Слой с насечками (обрабатывает клики)
-        Positioned.fill(
+        Positioned(
           left: marksLeftPadding,
           right: marksRightPadding,
           child: GestureDetector(
@@ -53,7 +53,7 @@ class _CustomSliderWithMarksState extends State<CustomSliderWithMarks> {
             onHorizontalDragUpdate: marksModel.dragSlider,
             onTapDown: marksModel.seekToMarker,
             child: CustomPaint(
-              size: Size(double.infinity, 40),
+              size: Size(double.infinity, 60),
               painter: MarksPainter(
                 shots: modelVideoPlayer.shots,
                 totalDuration: modelVideoPlayer.totalDuration,
@@ -66,7 +66,7 @@ class _CustomSliderWithMarksState extends State<CustomSliderWithMarks> {
     );
   }
 
-  StatefulWidget getSlider() {
+    StatefulWidget getSlider() {
     return Slider(
       key: _sliderKey,
       activeColor: const Color.fromARGB(255, 167, 38, 29),
@@ -79,14 +79,14 @@ class _CustomSliderWithMarksState extends State<CustomSliderWithMarks> {
           modelVideoPlayer.currentPosition = Duration(
             milliseconds: value.toInt(),
           );
-          modelVideoPlayer.controller.seekTo(modelVideoPlayer.currentPosition);
+          modelVideoPlayer.controller!.seekTo(modelVideoPlayer.currentPosition);
         });
       },
       onChangeStart: (_) {
-        if (!modelVideoPlayer.isPlaying) modelVideoPlayer.controller.pause();
+        if (!modelVideoPlayer.isPlaying) modelVideoPlayer.controller!.pause();
       },
       onChangeEnd: (_) {
-        if (modelVideoPlayer.isPlaying) modelVideoPlayer.controller.play();
+        if (modelVideoPlayer.isPlaying) modelVideoPlayer.controller!.play();
       },
     );
   }

@@ -1,6 +1,7 @@
 // ====================================================
 //  Главное окно для выбора режима: запись, просмотр, импорт
 // ====================================================
+import 'package:endoscopy_ai/features/storage_system/storage_system.dart';
 import 'package:flutter/material.dart';
 import 'package:endoscopy_ai/routes.dart';
 import 'package:endoscopy_ai/shared/file_choser.dart';
@@ -47,15 +48,18 @@ class _HomePageState extends State<HomePage> {
                 setState(() {
                   _disableControls = true;
                 });
-                if (context.mounted) {
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(SnackBar(content: Text('Открываем меню...')));
-                }
+                //if (context.mounted) {
+                //  ScaffoldMessenger.of(
+                //    context,
+                //  ).showSnackBar(SnackBar(content: Text('Открываем меню...')));
+                //}
                 await FilePicker.pickFile();
 
                 Navigator.pushNamed(context, Routes.patientRegistration,
-                    arguments: Routes.fileVideoPlayer);
+                    arguments: {
+                      'destinatoin': Routes.fileVideoPlayer,
+                      'copy_from': FilePicker.filePath!
+                    });
               } catch (error) {
                 await showDialog(
                   context: context,

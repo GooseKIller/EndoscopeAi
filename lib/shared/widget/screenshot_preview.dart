@@ -4,6 +4,7 @@
 
 import 'dart:io';
 
+import 'package:endoscopy_ai/features/storage_system/record_entry.dart';
 import 'package:flutter/material.dart';
 import 'package:endoscopy_ai/routes.dart'; // для навигации
 import 'package:endoscopy_ai/shared/utility/strings.dart';
@@ -13,12 +14,12 @@ enum ScreenshotPreviewState { good, pending, error }
 
 // Модель с данными о превьюшке кадра
 class ScreenshotPreviewModel {
-  final String path; // путь к PNG
+  final ScreenshotEntry screenshotData; // данные скриншота
   final Duration position; // время, где сделан кадр
   ScreenshotPreviewState state; // состояние загрузки
 
   ScreenshotPreviewModel(
-    this.path,
+    this.screenshotData,
     this.position, {
     this.state = ScreenshotPreviewState.good,
   });
@@ -55,7 +56,7 @@ class ScreenshotPreviewView extends StatelessWidget {
             Navigator.pushNamed(
               context,
               Routes.annotate,
-              arguments: model.path,
+              arguments: model.screenshotData,
             );
           },
           child: _createMinimalisticPreview(),
@@ -108,18 +109,24 @@ class ScreenshotPreviewView extends StatelessWidget {
     switch (model.state) {
       case ScreenshotPreviewState.good: // изображение успешно загружено
         return Image.file(
-          File(model.path),
+          File(model.screenshotData.imagePath),
           fit: BoxFit.cover,
           width: double.infinity,
           height: double.infinity,
+          cacheWidth: 320, // Кэшируем уменьшенную версию для списка
+          cacheHeight: 180,
         );
       case ScreenshotPreviewState.pending: // изображение ещё загружается
-        return const SizedBox.square(
-          dimension: 5,
-          child: CircularProgressIndicator(),
+        return const Center(
+          child: SizedBox.square(
+            dimension: 20,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
         );
       case ScreenshotPreviewState.error: // ошибка загрузки
-        return const Icon(Icons.error, color: Colors.red);
+        return const Center(
+          child: Icon(Icons.error, color: Colors.red),
+        );
     }
   }
 }

@@ -1,35 +1,35 @@
 // ====================================================
-//  Страница для вопроизведения зяписанного видео
+//  Страница для воспроизведения записанного видео
 // ====================================================
-import 'package:endoscopy_ai/features/patient/record_data.dart';
+import 'package:endoscopy_ai/features/video_player/player_data.dart';
 import 'package:flutter/material.dart';
 import 'file_video_model.dart';
 import 'file_video_view.dart';
-import '../recordings/recordings_model.dart';
-import 'package:endoscopy_ai/shared/file_choser.dart';
-import 'package:path/path.dart' as p;
+// для compute
 
 // Страница с воспроизведением видео с файла
-class FileVidePlayerPage extends StatefulWidget {
-  final RecordData? _recordData;
+class FileVideoPlayerPage extends StatefulWidget {
+  final PlayerData? _playerData;
 
-  const FileVidePlayerPage(this._recordData, {super.key});
+  const FileVideoPlayerPage(this._playerData, {super.key});
 
   @override
-  State<FileVidePlayerPage> createState() =>
-      _FileVidePlayerPageState(_recordData);
+  State<FileVideoPlayerPage> createState() =>
+      _FileVideoPlayerPageState(_playerData!);
 }
 
-class _FileVidePlayerPageState extends State<FileVidePlayerPage> {
-  late final _model; // бэкенд логика
-  late final _view; // фронтенд логика
+class _FileVideoPlayerPageState extends State<FileVideoPlayerPage> {
+  late final FileVideoPlayerPageStateModel _model; // бэкенд логика
+  late final FileVideoPlayerPageStateView _view; // фронтенд логика
+  late final PlayerData _playerData;
 
-  _FileVidePlayerPageState(RecordData? recordData) {
-    if (recordData == null) {
+  _FileVideoPlayerPageState(PlayerData? playerData) {
+    if (playerData == null) {
       throw ErrorDescription("NULL RECORD DATA");
     }
-    _model = FileVideoPlayerPageStateModel(setState, recordData);
-    _view = FileVidePlayerPageStateView(setState, _model);
+    _playerData = playerData;
+    _model = FileVideoPlayerPageStateModel(setState, playerData);
+    _view = FileVideoPlayerPageStateView(setState, _model);
   }
 
   @override
@@ -38,23 +38,13 @@ class _FileVidePlayerPageState extends State<FileVidePlayerPage> {
 
     _model.initState();
 
-// Перенести в model!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    // Добавляем запись в список записей, если файл валиден
-    if (FilePicker.checkFile() && FilePicker.filePath != null) {
-      final filePath = FilePicker.filePath!;
-      final fileName = p.basename(filePath);
-      RecordingsPageModel().addRecording(
-        Recording(
-          filePath: filePath,
-          timestamp: DateTime.now(),
-          fileName: fileName,
-        ),
-      );
-    }
-    // Перенести в model!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-    // Обновляем позицию каждые 100 мс
-    _model.controller.addListener(_updateProgress);
+    // Listen for controller initialization using the public future
+    _model.initializationFuture?.then((_) {
+      if (mounted && _model.isInitialized) {
+        // Add listener only after controller is ready
+        _model.controller?.addListener(_updateProgress);
+      }
+    });
   }
 
   @override
@@ -62,19 +52,21 @@ class _FileVidePlayerPageState extends State<FileVidePlayerPage> {
     return _view.build(context);
   }
 
-  // Освободть ресурсы
+  // Освободить ресурсы
   @override
   void dispose() {
+    // Remove listener if controller exists
+    _model.controller?.removeListener(_updateProgress);
     _model.dispose();
     super.dispose();
   }
 
   // Обновить состояние videoplayer
   void _updateProgress() {
-    if (mounted) {
+    if (mounted && _model.isInitialized) {
       setState(() {
-        _model.currentPosition = _model.controller.value.position;
-        _model.totalDuration = _model.controller.value.duration;
+        _model.currentPosition = _model.controller!.value.position;
+        _model.totalDuration = _model.controller!.value.duration;
       });
     }
   }
