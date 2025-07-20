@@ -5,6 +5,7 @@ class VoiceControl {
   final void Function(String) onCommand;
   final void Function(String) onError;
   bool _isConnected = false;
+  bool _isDisposed = false;
 
   VoiceControl({
     required this.onCommand,
@@ -19,6 +20,7 @@ class VoiceControl {
   }
 
   Future<void> _connect() async {
+    if (_isDisposed) return;
     try {
       _channel = WebSocketChannel.connect(
         Uri.parse('ws://localhost:8765'),
@@ -39,7 +41,7 @@ class VoiceControl {
           _isConnected = false;
         },
       );
-      
+
       _isConnected = true;
       print("WebSocket connected successfully");
     } catch (e) {
@@ -50,11 +52,14 @@ class VoiceControl {
   }
 
   void _startReconnectTimer() {
+    if (_isDisposed) return;
+
     Future.delayed(Duration(seconds: 5), () {
       if (!_isConnected) {
         print("Attempting to reconnect...");
         _connect();
       }
+
       _startReconnectTimer();
     });
   }
@@ -62,9 +67,9 @@ class VoiceControl {
   void _handleMessage(String text) {
     print("Processing message: $text");
     text = text.toLowerCase();
-    
+
     final commands = {
-      'старт': 'start_recording',
+      'начать': 'start_recording',
       'стоп': 'stop_recording',
       'остановить запись': 'stop_recording',
       'сделать снимок': 'take_photo',
@@ -78,11 +83,12 @@ class VoiceControl {
         return;
       }
     }
-    
+
     print("No valid command found in: $text");
   }
 
   void connect() {
+    if (_isDisposed) return;
     print("Connecting to WebSocket...");
     try {
       _channel = WebSocketChannel.connect(
@@ -90,7 +96,7 @@ class VoiceControl {
       );
 
       print("WebSocket connected. Listening...");
-      
+
       _channel?.stream.listen(
         (data) {
           print("Received raw data: $data");
@@ -114,5 +120,6 @@ class VoiceControl {
   void dispose() {
     _channel?.sink.close();
     _isConnected = false;
+    _isDisposed = true;
   }
 }
