@@ -60,47 +60,41 @@ class StreamPageModel with ChangeNotifier {
   // `cameraDescription` -  данные о камере
   StreamPageModel(this._playerData, this.cameraDescription, this.setState) {
     _startTime = DateTime.now();
-    _initializeVoiceControl(); 
+    _initializeVoiceControl();
     // Не инициализируем камеру в конструкторе, только в initialize()
   }
 
-
-
-void _initializeVoiceControl() {
-  _voiceControl = VoiceControl(
-    onCommand: (cmd) {
-      print("Executing voice command: $cmd");
-      switch (cmd) {
-        case 'start_recording':
-          if (!_isRecording) startRecording();
-          break;
-        case 'stop_recording':
-          if (_isRecording) stopRecording();
-          break;
-        case 'take_photo':
-          takePicture().then((file) {
-            if (file != null) saveScreenshot(file);
-          });
-          break;
-      }
-      notifyListeners();
-    },
-    onError: (error) => print("Voice control error: $error"),
-  );
-}
+  void _initializeVoiceControl() {
+    _voiceControl = VoiceControl(
+      onCommand: (cmd) {
+        print("Executing voice command: $cmd");
+        switch (cmd) {
+          // case 'start_recording':
+          //   if (!_isRecording) startRecording();
+          //   break;
+          // case 'stop_recording':
+          //   if (_isRecording) stopRecording();
+          //   break;
+          case 'take_photo':
+            makeScreenshot();
+            break;
+        }
+        notifyListeners();
+      },
+      onError: (error) => print("Voice control error: $error"),
+    );
+  }
 
   void _handleVoiceCommand(String command) {
     switch (command) {
-      case 'start_recording':
-        if (!_isRecording) startRecording();
-        break;
-      case 'stop_recording':
-        if (_isRecording) stopRecording();
-        break;
+      // case 'start_recording':
+      //   if (!_isRecording) startRecording();
+      //   break;
+      // case 'stop_recording':
+      //   if (_isRecording) stopRecording();
+      //   break;
       case 'take_photo':
-        takePicture().then((file) {
-          if (file != null) saveScreenshot(file);
-        });
+        makeScreenshot();
         break;
     }
     notifyListeners();
@@ -263,19 +257,6 @@ void _initializeVoiceControl() {
       }
       await _checkCameraAvailability();
     });
-  }
-
-  // Сохранение кадра в файл
-  Future<XFile?> takePicture() async {
-    if (!_isInitialized || _controller == null || _isDisposed) return null;
-    try {
-      return await _controller!.takePicture();
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error taking picture: $e');
-      }
-      return null;
-    }
   }
 
 // Сделать скриншот
