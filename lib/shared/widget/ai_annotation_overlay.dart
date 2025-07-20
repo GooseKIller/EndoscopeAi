@@ -8,9 +8,15 @@ import 'package:endoscopy_ai/features/ai/endo_ai.dart';
 class AiAnnotationOverlay extends StatelessWidget {
   final Size videoSize;
   final List<FFIDetectionResult> foundFeatures;
+  late final bool shouldPaint;
 
-  const AiAnnotationOverlay(
-      {required this.videoSize, required this.foundFeatures, super.key});
+  AiAnnotationOverlay(
+      {required this.videoSize,
+      required this.foundFeatures,
+      bool? shouldPaint,
+      super.key}) {
+    this.shouldPaint = shouldPaint ?? true;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -21,8 +27,8 @@ class AiAnnotationOverlay extends StatelessWidget {
 
       return CustomPaint(
         size: renderSize,
-        painter:
-            _AnnotationPainter(rectangles: foundFeatures, videoSize: videoSize),
+        painter: _AnnotationPainter(
+            rectangles: shouldPaint ? foundFeatures : [], videoSize: videoSize),
       );
     });
   }

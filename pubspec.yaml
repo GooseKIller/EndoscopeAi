@@ -46,4 +46,6 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-  - assets/models/best_yolo.onnx
+  # - assets/models/best_yolo.onnx
+  - assets/models/best_optimized.onnx
+  # - assets/models/best_quantized.onnx

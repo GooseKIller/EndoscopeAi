@@ -54,6 +54,23 @@ class EndoAI {
     return EndoAI._(handle);
   }
 
+  // Создание обертки
+  static Future<EndoAI> createFromMem({
+    required Uint8List modelData,
+    List<String>? classLabels,
+    double? confidenceThreshold,
+    double? nmsThreshold,
+  }) async {
+    final handle = await yoloNewMem(
+      mem: modelData,
+      classLabels: classLabels ?? _defaultClassLabels,
+      confidenceThreshold: confidenceThreshold ?? _defaultConfidenceThreshold,
+      nmsThreshold: nmsThreshold ?? _defaultNmsThreshold,
+    );
+
+    return EndoAI._(handle);
+  }
+
   // Создание обертки по пути внешнего файла
   static Future<EndoAI> createFromFile({
     required String modelPath,

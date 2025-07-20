@@ -321,4 +321,8 @@ class StreamPageModel with ChangeNotifier {
       _controller = null;
     }
   }
+
+  Future<void> aiRecognize() async {
+    // _controller.startImageStream(onAvailable)
+  }
 }

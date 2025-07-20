@@ -5,6 +5,7 @@
 import 'dart:io';
 import 'dart:ui';
 import 'package:endoscopy_ai/features/ai/endo_ai.dart';
+import 'package:endoscopy_ai/shared/utility/repeating_task_executer.dart';
 import 'package:flutter/foundation.dart';
 import 'package:fvp/fvp.dart';
 import 'package:image/image.dart' as img;
@@ -16,6 +17,8 @@ import 'package:endoscopy_ai/shared/widget/screenshot_preview.dart';
 
 // Модель содержащая, данные и логику
 class FileVideoPlayerPageStateModel {
+  final Duration _aiUpdateRate = Duration(milliseconds: 100);
+
   FileVideoPlayerPageStateModel(this.setState, this.recordData);
 
   final RecordData recordData;
@@ -38,10 +41,15 @@ class FileVideoPlayerPageStateModel {
   List<ScreenshotPreviewModel> get shots => _shots;
   VideoPlayerController get controller => _controller;
 
+  late final RepeatingTaskExecuter _aiExecture;
+  bool get showAi => _aiExecture.isRunning;
+  set showAi(bool value) => _aiExecture.isRunning = value;
   Size get videoSize => _controller.value.size;
 
   void initState() {
     _prepareDir();
+    _aiExecture =
+        RepeatingTaskExecuter(refreshTime: _aiUpdateRate, task: aiCapture);
     if (FilePicker.checkFile()) {
       _isValidFile = true;
       _controller = VideoPlayerController.file(
@@ -54,6 +62,7 @@ class FileVideoPlayerPageStateModel {
         setState(() {
           totalDuration = _controller.value.duration;
         });
+        _aiExecture.start();
       }).catchError((error) {
         debugPrint('Ошибка инициализации видео: $error');
       });
@@ -147,6 +156,7 @@ class FileVideoPlayerPageStateModel {
 
   // освобождение ресурсов
   void dispose() {
+    _aiExecture.dispose();
     _controller.dispose();
   }
 
@@ -172,7 +182,8 @@ class FileVideoPlayerPageStateModel {
     }
   }
 
-  Future<void> captureShit() async {
+  Future<void> aiCapture() async {
+    if (!showAi) return;
     final width = videoSize.width.toInt();
     final height = videoSize.height.toInt();
     final pixelData = await _controller.snapshot(
@@ -180,15 +191,19 @@ class FileVideoPlayerPageStateModel {
       height: height,
     );
 
-    final data =
-        await EndoAi.predict(width: width, height: height, pixels: pixelData!);
+    List<FFIDetectionResult>? data;
+    if (_aiExecture.isRunning) {
+      data = await EndoAi.predict(
+          width: width, height: height, pixels: pixelData!);
+    }
+    if (_aiExecture.isRunning && data != null) {
+      setState(() {
+        _deetectedPolyps = data!;
+      });
+    }
 
-    setState(() {
-      _deetectedPolyps = data;
-    });
-
-    print('FOUND ${data.length}');
-    for (var x in data) {
+    print('FOUND ${data?.length ?? 0}');
+    for (var x in data ?? []) {
       print(
           '\t\t${x.label}(${(x.confidence * 100).toInt()}%): (${x.x1}, ${x.y1})->(${x.x2}, ${x.y2})');
     }

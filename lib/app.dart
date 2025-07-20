@@ -2,6 +2,7 @@
 //  Главное окно приложения, на котором производится отрисовка
 // ====================================================
 import 'package:endoscopy_ai/features/patient/record_data.dart';
+import 'package:endoscopy_ai/pages/feature_initializer/feature_initializer.dart';
 import 'package:endoscopy_ai/pages/patient_registration/patient_registration_page.dart';
 
 import 'routes.dart';
@@ -55,6 +56,7 @@ class _AppState extends State<App> {
 
   @override
   Widget build(BuildContext context) {
+    // инициализация компонентов
     return MaterialApp(
       title: 'EncodescopeAI',
       theme: ThemeData(
@@ -62,17 +64,15 @@ class _AppState extends State<App> {
           seedColor: const Color.fromARGB(255, 90, 6, 201),
         ),
       ),
-      initialRoute: Routes.root,
+      home: FeatureInitializer(),
+      // initialRoute: Routes.root,
       routes: {
         Routes.recordings: (context) => RecordingsPage(),
         Routes.homePage: (context) => const HomePage(),
         Routes.fileVideoPlayer: (context) => FileVidePlayerPage(
             ModalRoute.of(context)!.settings.arguments as RecordData),
-        Routes.patientRegistration: (context) =>
-            PatientRegistrationPage(
-              ModalRoute.of(context)!.settings.arguments as String
-            ),
-
+        Routes.patientRegistration: (context) => PatientRegistrationPage(
+            ModalRoute.of(context)!.settings.arguments as String),
         Routes.streamVideoPlayer: (context) {
           if (!_isCameraInitialized) {
             return const Scaffold(
@@ -98,12 +98,15 @@ class _AppState extends State<App> {
               ),
             );
           }
-          return StreamPage(camera: cameras.first, ModalRoute.of(context)!.settings.arguments as RecordData);
+          return StreamPage(
+              camera: cameras.first,
+              ModalRoute.of(context)!.settings.arguments as RecordData);
         },
         Routes.annotate: (context) {
           final path = ModalRoute.of(context)!.settings.arguments as String;
           return AnnotatePage(imagePath: path);
         },
+        Routes.initializer: (context) => FeatureInitializer(),
       },
     );
   }

@@ -34,10 +34,6 @@ class FileVidePlayerPageStateView {
         padding: const EdgeInsets.all(5),
         child: Row(
           children: [
-            IconButton(
-                onPressed: _model.captureShit,
-                icon: Icon(Icons.breakfast_dining)),
-
             /// ВИДЕО
             _buildVideo(context),
 
@@ -51,20 +47,41 @@ class FileVidePlayerPageStateView {
           ],
         ),
       ),
-      floatingActionButton: _createScreenshotButton(),
+      floatingActionButton: _createButtons(),
     );
   }
 
   // Создание ливетирующей кнопки для скриншотов
-  Widget _createScreenshotButton() {
-    return FloatingActionButton(
-      onPressed: _model.makeScreenshot,
-      backgroundColor: const Color.fromARGB(255, 252, 232, 232),
-      child: Icon(
-        Icons.camera_alt,
-        color: const Color.fromARGB(255, 65, 63, 63),
-      ),
-    );
+  Widget _createButtons() {
+    return Builder(
+        builder: (context) => Column(mainAxisSize: MainAxisSize.min, children: [
+              // вкл выкл ии
+              FloatingActionButton(
+                  heroTag: 'ai_btn',
+                  tooltip: (_model.showAi) ? 'Выключить ИИ' : 'Включить ИИ',
+                  onPressed: () => setState(() {
+                        _model.showAi = !_model.showAi;
+                        print('AI togge ${_model.showAi}');
+                      }),
+                  backgroundColor: const Color.fromARGB(255, 252, 232, 232),
+                  child: Icon(
+                    (_model.showAi)
+                        ? Icons.tips_and_updates_rounded
+                        : Icons.tips_and_updates_outlined,
+                    color: const Color.fromARGB(255, 65, 63, 63),
+                  )),
+              // скриншотоделка
+              FloatingActionButton(
+                heroTag: 'scr_btn',
+                //  label: Text('Make screenshot'),
+                onPressed: _model.makeScreenshot,
+                backgroundColor: const Color.fromARGB(255, 252, 232, 232),
+                child: Icon(
+                  Icons.camera_alt,
+                  color: const Color.fromARGB(255, 65, 63, 63),
+                ),
+              )
+            ]));
   }
 
   // создание.... эээ.. чего это....
@@ -84,7 +101,8 @@ class FileVidePlayerPageStateView {
                 VideoPlayer(_model.controller),
                 AiAnnotationOverlay(
                     videoSize: _model.videoSize,
-                    foundFeatures: _model.deetectedPolyps)
+                    foundFeatures: _model.deetectedPolyps,
+                    shouldPaint: _model.showAi)
               ])),
           if (_model.showControls) PlayPauseButton(model: _model),
           if (_model.showControls) CustomSlider(modelVideoPlayer: _model),

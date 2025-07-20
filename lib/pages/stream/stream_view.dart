@@ -149,7 +149,8 @@ class StreamPageView extends StatelessWidget {
 
             void addSpace() => buttons.add(const SizedBox(height: 8));
 
-            if (!model.recording) { // Заменить!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            if (!model.recording) {
+              // Заменить!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
               addSpace();
               buttons.add(
                 FloatingActionButton.extended(
