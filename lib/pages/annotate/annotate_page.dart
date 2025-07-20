@@ -16,7 +16,13 @@ const _keyHistLst = 'hist';
 const _keyHistIdx = 'idx';
 const _keyDraft = 'draft';
 
+
 enum Tool { pen, rect, circle, move }
+class _AnnotationSnapshot {
+  _AnnotationSnapshot(this.elements, this.mapSnap);
+  final List<Shape> elements;
+  final BodyMapSnapshot mapSnap;
+}
 
 class AnnotatePage extends StatefulWidget {
   const AnnotatePage({super.key, required this.screenshotData});
@@ -31,6 +37,15 @@ class _AnnotationSnapshot {
   _AnnotationSnapshot(this.elements, this.mapSnap);
   final List<Shape> elements;        // копия фигур
   final BodyMapSnapshot mapSnap;     // снимок карты органов
+
+bool _mapEquals(BodyMapSnapshot a, BodyMapSnapshot b) {
+  if (a.organ != b.organ) return false;
+  if (a.markers.length != b.markers.length) return false;
+
+  for (var i = 0; i < a.markers.length; i++) {
+    if ((a.markers[i].rel - b.markers[i].rel).distance > 1e-6) return false;
+  }
+  return true;
 }
 
 class _AnnotatePageState extends State<AnnotatePage> {
@@ -155,6 +170,7 @@ class _AnnotatePageState extends State<AnnotatePage> {
       }
     }
   }
+  
 
   static const _palette = [
     Color(0xFF0072B2),
@@ -313,6 +329,7 @@ String _encodeLocation() {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+
                   AspectRatio(
                       aspectRatio: 1,
                       child: Card(
@@ -550,6 +567,7 @@ void _redo() {
   // save SVG
   Future<void> _saveSvg() async {
     try {
+      
       final ui.Image img = await (_globalKey.currentContext!.findRenderObject()
               as RenderRepaintBoundary)
           .toImage(pixelRatio: 1.0);
@@ -588,8 +606,8 @@ void _redo() {
           context,
         ).showSnackBar(SnackBar(content: Text('Saved: ${p.basename(path)}')));
       }
-    } catch (e) {
-      debugPrint('Save SVG error: $e');
+    } catch (e, st) {
+      debugPrint('Save SVG error: $e\n$st');
     }
   }
 }

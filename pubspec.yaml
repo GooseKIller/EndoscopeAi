@@ -31,6 +31,8 @@ dependencies:
   mockito: ^5.4.6
   plugin_platform_interface: ^2.1.8
   flutter_svg: ^2.2.0
+  intl: ^0.18.1
+  web_socket_channel: ^3.0.3
 
 dev_dependencies:
   flutter_test:

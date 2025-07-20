@@ -8,6 +8,8 @@ import 'package:flutter/material.dart';
 import 'package:endoscopy_ai/shared/widget/screenshot_feed.dart';
 import 'package:provider/provider.dart';
 import 'package:endoscopy_ai/pages/stream/stream_model.dart';
+import 'package:path/path.dart' as p;
+import 'package:file_picker/file_picker.dart';
 
 //  Логика, содержащая логику, связанную с UI
 class StreamPageView extends StatelessWidget {

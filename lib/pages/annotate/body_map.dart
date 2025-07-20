@@ -104,6 +104,7 @@ class BodyMapController extends ChangeNotifier {
   Future<void> savePng(String basePath) async {
     final bytes = await capturePng();
     if (bytes == null) return;
+
     final file = File('${basePath}_${_organ!.name}.png');
     await file.writeAsBytes(bytes);
   }
