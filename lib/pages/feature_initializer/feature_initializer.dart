@@ -2,6 +2,8 @@ import 'package:endoscopy_ai/routes.dart';
 import 'package:flutter/material.dart';
 import 'package:fvp/fvp.dart' as fvp;
 import 'package:endoscopy_ai/features/ai/endo_ai.dart';
+import 'package:endoscopy_ai/features/storage_system/storage_system.dart';
+
 
 class FeatureInitializer extends StatefulWidget {
   static bool componentsInitialized = false;
@@ -29,6 +31,9 @@ class _FeatureInitializerState extends State<FeatureInitializer> {
     try {
       _setStage('Начало инициализации');
       await Future.delayed(Duration(seconds: 1));
+
+      _setStage("Инициализация системы хранения");
+  await StorageSystem.initialize();
 
       _setStage("Инициализация видеокомпонентов");
       // Wrap synchronous operation in future to avoid blocking UI
@@ -112,7 +117,7 @@ class _FeatureInitializerState extends State<FeatureInitializer> {
               const SizedBox(height: 20),
 
               // Retry button for errors
-              if (_initializationError)
+              if (_initializationError && false)
                 ElevatedButton(
                   onPressed: () {
                     setState(() {
