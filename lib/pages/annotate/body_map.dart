@@ -1,79 +1,113 @@
-import 'dart:io';
 import 'dart:typed_data';
+import 'dart:ui' as ui;
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:intl/intl.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:screenshot/screenshot.dart';
+import 'package:path/path.dart' as p;
+import 'package:flutter/rendering.dart' show RenderRepaintBoundary;
 
 
-//  BodyMapController — позволяет странице управлять картой органов
+enum BodyPart { oesophagus, stomach, duodenum, colon }
 
-class BodyMapController extends ChangeNotifier {
-  
-  BodyPart? _organ;
-  final List<_Marker> _markers = [];
-  ScreenshotController? _shotCtrl; // инициализируется BodyMapSection
-  
-
-  
-  BodyPart? get organ => _organ;
-  List<_Marker> get markers => List.unmodifiable(_markers);
-
-  void setOrgan(BodyPart? part) {
-    _organ = part;
-    _markers.clear();
-    notifyListeners();
+extension BodyPartX on BodyPart {
+  String get label {
+    switch (this) {
+      case BodyPart.oesophagus: return 'Пищевод';
+      case BodyPart.stomach:    return 'Желудок';
+      case BodyPart.duodenum:   return 'ДПК';
+      case BodyPart.colon:      return 'Кишка';
+    }
   }
 
-  void setMarkers(Iterable<_Marker> m) {
-    _markers
-      ..clear()
-      ..addAll(m);
-    notifyListeners();
+  String get assetPath => 'assets/body_maps/${name}.svg';
+
+  static BodyPart? fromName(String? s) {
+    if (s == null || s.isEmpty) return null;
+    return BodyPart.values.firstWhere(
+      (e) => e.name == s,
+      orElse: () => BodyPart.stomach,
+    );
   }
+}
 
-  void addMarker(_Marker m) {
-    _markers.add(m);
-    notifyListeners();
-  }
-
-  void removeMarker(_Marker m) {
-    _markers.remove(m);
-    notifyListeners();
-  }
-
-  // Возвращает снимок текущего состояния (для undo/redo)
-  BodyMapSnapshot snapshot() => BodyMapSnapshot(_organ, List<_Marker>.from(_markers));
-
-  // Восстанавливает состояние из снапшота (undo/redo)
-  void restore(BodyMapSnapshot snap) {
-    _organ = snap.organ;
-    _markers
-      ..clear()
-      ..addAll(snap.markers);
-    notifyListeners();
-  }
-
-  // Сохраняет PNG в ту же папку, куда основной скриншот страницы.
-  Future<void> savePng(String basePath) async {
-    if (_organ == null || _shotCtrl == null) return;
-    final bytes = await _shotCtrl!.capture(pixelRatio: 3);
-    if (bytes == null) return;
-
-    final dir = Directory((await getApplicationDocumentsDirectory()).path);
-    if (!await dir.exists()) await dir.create(recursive: true);
-
-    final file = File('${basePath}_${_organ!.name}.png');
-    await file.writeAsBytes(bytes);
-  }
+class BodyMarker {
+  BodyMarker(this.rel);
+  final Offset rel; // 0..1
+  Map<String, dynamic> toJson() => {'x': rel.dx, 'y': rel.dy};
+  static BodyMarker fromJson(Map<String, dynamic> j) =>
+      BodyMarker(Offset((j['x'] as num).toDouble(), (j['y'] as num).toDouble()));
 }
 
 class BodyMapSnapshot {
   BodyMapSnapshot(this.organ, this.markers);
   final BodyPart? organ;
-  final List<_Marker> markers;
+  final List<BodyMarker> markers;
+}
+
+
+class BodyMapController extends ChangeNotifier {
+  BodyPart? _organ;
+  final List<BodyMarker> _markers = [];
+  GlobalKey? _boundaryKey; // регистрирует BodyMapSection
+
+  BodyPart? get organ => _organ;
+  List<BodyMarker> get markers => List.unmodifiable(_markers);
+
+  void setOrgan(BodyPart? p) {
+    _organ = p;
+    _markers.clear();
+    notifyListeners();
+  }
+
+  void addMarker(Offset rel) {
+    _markers.add(BodyMarker(rel));
+    notifyListeners();
+  }
+
+  void removeMarker(BodyMarker m) {
+    _markers.remove(m);
+    notifyListeners();
+  }
+
+  BodyMapSnapshot snapshot() => BodyMapSnapshot(_organ, List.of(_markers));
+
+  void restore(BodyMapSnapshot s) {
+    _organ = s.organ;
+    _markers
+      ..clear()
+      ..addAll(s.markers);
+    notifyListeners();
+  }
+
+  // Регистрирует RepaintBoundary для последующего снятия PNG.
+  void registerBoundary(GlobalKey key) => _boundaryKey = key;
+
+  // Снимает PNG текущей карты. null, если орган не выбран.
+  Future<Uint8List?> capturePng({double pixelRatio = 2}) async {
+  if (_organ == null) return null;
+  final key = _boundaryKey;
+  if (key == null) return null;
+
+  final ctx = key.currentContext;
+  if (ctx == null) return null;
+
+  final render = ctx.findRenderObject();
+  if (render is! RenderRepaintBoundary) return null;
+
+  final ui.Image img = await render.toImage(pixelRatio: pixelRatio);
+  final bd = await img.toByteData(format: ui.ImageByteFormat.png);
+  return bd?.buffer.asUint8List();
+}
+
+  // Сохраняет PNG карты органа в тот же каталог, что и [basePath] (без расширения).
+  Future<void> savePng(String basePath) async {
+    final bytes = await capturePng();
+    if (bytes == null) return;
+
+    final file = File('${basePath}_${_organ!.name}.png');
+    await file.writeAsBytes(bytes);
+  }
 }
 
 class BodyMapSection extends StatefulWidget {
@@ -85,72 +119,79 @@ class BodyMapSection extends StatefulWidget {
 }
 
 class _BodyMapSectionState extends State<BodyMapSection> {
-  final _shotCtrl = ScreenshotController();
+  final _repaintKey = GlobalKey();
 
   @override
   void initState() {
     super.initState();
-    widget.controller._shotCtrl = _shotCtrl; 
-    widget.controller.addListener(_onControllerChange);
+    widget.controller.registerBoundary(_repaintKey);
+    widget.controller.addListener(_onCtrl);
   }
 
   @override
   void dispose() {
-    widget.controller.removeListener(_onControllerChange);
+    widget.controller.removeListener(_onCtrl);
     super.dispose();
   }
 
-  void _onControllerChange() => setState(() {});
+  void _onCtrl() => setState(() {});
 
-  void _handleTap(Offset localPos, Size size) {
-    if (widget.controller.organ == null) return;
-    final rel = Offset(localPos.dx / size.width, localPos.dy / size.height);
-    widget.controller.addMarker(_Marker(rel));
+  void _add(Size size, TapUpDetails d) {
+    final rel = Offset(
+      (d.localPosition.dx / size.width).clamp(0.0, 1.0),
+      (d.localPosition.dy / size.height).clamp(0.0, 1.0),
+    );
+    widget.controller.addMarker(rel);
   }
 
-  
   @override
   Widget build(BuildContext context) {
-    final ctrl = widget.controller;
-
+    final c = widget.controller;
+    final organ = c.organ;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // toolbar
-        Row(
-          children: [
-            DropdownButton<BodyPart?>(
-              value: ctrl.organ,
-              hint: const Text('Выберите орган'),
-              onChanged: ctrl.setOrgan,
-              items: BodyPart.values
-                  .map((p) => DropdownMenuItem(value: p, child: Text(p.label)))
-                  .toList(),
-            ),
-          ],
+        DropdownButton<BodyPart?>(
+          value: organ,
+          hint: const Text('Выберите орган'),
+          onChanged: c.setOrgan,
+          items: BodyPart.values
+              .map((p) => DropdownMenuItem(value: p, child: Text(p.label)))
+              .toList(),
         ),
         const SizedBox(height: 8),
-
-        // карта / заглушка
         Expanded(
-          child: Screenshot(
-            controller: _shotCtrl,
-            child: ctrl.organ == null
+          child: RepaintBoundary(
+            key: _repaintKey,
+            child: organ == null
                 ? const Center(child: Text('Нет органа'))
                 : LayoutBuilder(
-                    builder: (ctx, constraints) {
-                      final size = constraints.biggest;
+                    builder: (_, cons) {
+                      final size = cons.biggest;
                       return GestureDetector(
-                        onTapUp: (d) => _handleTap(d.localPosition, size),
+                        onTapUp: (d) => _add(size, d),
                         child: Stack(
                           children: [
                             SvgPicture.asset(
-                              ctrl.organ!.assetPath,
+                              organ.assetPath,
                               width: size.width,
                               height: size.height,
                               fit: BoxFit.contain,
                             ),
-                            ...ctrl.markers.map((m) => _buildPin(size, m)),
+                            ...c.markers.map(
+                              (m) => Positioned(
+                                left: m.rel.dx * size.width - 12,
+                                top: m.rel.dy * size.height - 24,
+                                child: GestureDetector(
+                                  onLongPress: () => c.removeMarker(m),
+                                  child: const Icon(
+                                    Icons.location_on,
+                                    color: Colors.red,
+                                    size: 32,
+                                  ),
+                                ),
+                              ),
+                            ),
                           ],
                         ),
                       );
@@ -161,38 +202,4 @@ class _BodyMapSectionState extends State<BodyMapSection> {
       ],
     );
   }
-
-  Widget _buildPin(Size size, _Marker m) => Positioned(
-        left: m.rel.dx * size.width - 12,
-        top: m.rel.dy * size.height - 24,
-        child: GestureDetector(
-          onLongPress: () => widget.controller.removeMarker(m),
-          child: const Icon(Icons.location_on, color: Colors.red, size: 32),
-        ),
-      );
-}
-
-enum BodyPart { oesophagus, stomach, duodenum, colon }
-
-extension on BodyPart {
-  String get assetPath => 'assets/body_maps/$name.svg';
-  String get label {
-    switch (this) {
-      case BodyPart.oesophagus:
-        return 'Пищевод';
-      case BodyPart.stomach:
-        return 'Желудок';
-      case BodyPart.duodenum:
-        return 'ДПК';
-      case BodyPart.colon:
-        return 'Толстый кишечник';
-    }
-  }
-}
-
-class _Marker {
-  _Marker(this.rel);
-  final Offset rel; // 0..1, 0..1
-  @override
-  String toString() => 'Marker(${rel.dx.toStringAsFixed(3)}, ${rel.dy.toStringAsFixed(3)})';
 }

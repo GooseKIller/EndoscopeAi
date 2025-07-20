@@ -7,10 +7,24 @@ Offset _abs(Size s, Offset rel) => Offset(rel.dx * s.width, rel.dy * s.height);
 String _hx(Color c) =>
     '#${c.value.toRadixString(16).padLeft(8, '0').substring(2)}';
 
+const _keyColor = 'color';
+const _keyWidth = 'width';
+const _keyShape = 'shape';
+
+enum _keyShapeType {
+  Pen('pen'),
+  Rect('rect'),
+  Ellipse('elliplse');
+
+  const _keyShapeType(this.key);
+
+  final String key;
+}
+
 abstract class Shape {
   Shape(this.color, this.strokeWidth);
-  final Color color;
-  final double strokeWidth;
+  Color color;
+  double strokeWidth;
 
   void paint(Canvas c, Paint p, Size cs);
   XmlNode toSvg(Size cs);
@@ -19,10 +33,28 @@ abstract class Shape {
   void translateRel(Offset dRel);
   Shape clone();
   bool compareTo(Shape other);
+
+  Map<String, dynamic> toJson();
+  factory Shape.fromJson(Map<String, dynamic> json) {
+    final key = json[_keyShape] as String;
+
+    if (key == _keyShapeType.Ellipse.key) {
+      return EllipseShape.fromJson(json);
+    } else if (key == _keyShapeType.Pen.key) {
+      return PenShape.fromJson(json);
+    } else if (key == _keyShapeType.Rect.key) {
+      return RectShape.fromJson(json);
+    } else {
+      print("INVALID SHAPE TYPE: $key");
+      return PenShape([], Colors.black, 0);
+    }
+  }
 }
 
 // Pen
 class PenShape extends Shape {
+  static const _keyPoints = 'points';
+
   List<Offset> pts; // relative
   PenShape(this.pts, Color col, double strokeWidth) : super(col, strokeWidth);
 
@@ -53,6 +85,34 @@ class PenShape extends Shape {
       ]);
 
   @override
+  Map<String, dynamic> toJson() {
+    return {
+      _keyPoints: pts.map((x) => [x.dx, x.dy]).toList(),
+      _keyColor: color.toARGB32(),
+      _keyWidth: strokeWidth,
+      _keyShape: _keyShapeType.Pen.key
+    };
+  }
+
+  factory PenShape.fromJson(Map<String, dynamic> map) {
+    Color color;
+    double strokeWidth;
+    List<Offset> pts; // relative
+
+    // загружаем поинты
+    pts = (map[_keyPoints] as List<dynamic>).cast<List<dynamic>>().map((y) {
+      final x = y.cast<double>();
+      return Offset(x[0], x[1]);
+    }).toList();
+
+    strokeWidth = map[_keyWidth] as double;
+
+    color = Color(map[_keyColor] as int);
+
+    return PenShape(pts, color, strokeWidth);
+  }
+
+  @override
   bool hitTest(Offset p, Size cs) =>
       pts.any((rp) => (_abs(cs, rp) - p).distance <= 8);
 
@@ -76,6 +136,9 @@ class PenShape extends Shape {
 
 // Rect
 class RectShape extends Shape {
+  static final _keyP1 = 'p1';
+  static final _keyP2 = 'p2';
+
   Offset p1, p2; // relative
   RectShape(this.p1, this.p2, Color col, double strokeWidth)
       : super(col, strokeWidth);
@@ -90,6 +153,36 @@ class RectShape extends Shape {
       ..strokeWidth = strokeWidth
       ..style = PaintingStyle.stroke;
     c.drawRect(_rect(cs), p);
+  }
+
+  @override
+  Map<String, dynamic> toJson() {
+    return {
+      _keyP1: [p1.dx, p1.dy],
+      _keyP2: [p2.dx, p2.dy],
+      _keyColor: color.toARGB32(),
+      _keyWidth: strokeWidth,
+      _keyShape: _keyShapeType.Rect.key
+    };
+  }
+
+  factory RectShape.fromJson(Map<String, dynamic> map) {
+    Offset p1, p2;
+    Color color;
+    double strokeWidth;
+
+    // загружаем поинты
+    final m1 = (map[_keyP1] as List<dynamic>).cast<double>();
+    p1 = Offset(m1[0], m1[1]);
+
+    final m2 = (map[_keyP2] as List<dynamic>).cast<double>();
+    p2 = Offset(m2[0], m2[1]);
+
+    strokeWidth = map[_keyWidth] as double;
+
+    color = Color(map[_keyColor] as int);
+
+    return RectShape(p1, p2, color, strokeWidth);
   }
 
   @override
@@ -129,6 +222,9 @@ class RectShape extends Shape {
 
 // Circle
 class EllipseShape extends Shape {
+  static final _keyA = 'a';
+  static final _keyB = 'b';
+
   Offset a, b; // opposite corners (rel)
   EllipseShape(this.a, this.b, Color col, double strokeWidth)
       : super(col, strokeWidth);
@@ -146,6 +242,35 @@ class EllipseShape extends Shape {
     c.drawOval(rect, p);
 
     //     c.drawCircle(rect.center, rect.shortestSide / 2, p);
+  }
+
+  @override
+  Map<String, dynamic> toJson() {
+    return {
+      _keyA: [a.dx, a.dy],
+      _keyB: [b.dx, b.dy],
+      _keyColor: color.toARGB32(),
+      _keyWidth: strokeWidth,
+      _keyShape: _keyShapeType.Ellipse.key
+    };
+  }
+
+  factory EllipseShape.fromJson(Map<String, dynamic> map) {
+    Color color;
+    Offset a, b;
+    double strokeWidth;
+
+    // загружаем поинты
+    final m1 = (map[_keyA] as List<dynamic>).cast<double>();
+    a = Offset(m1[0], m1[1]);
+    final m2 = (map[_keyB] as List<dynamic>).cast<double>();
+    b = Offset(m2[0], m2[1]);
+
+    strokeWidth = map[_keyWidth] as double;
+
+    color = Color(map[_keyColor] as int);
+
+    return EllipseShape(a, b, color, strokeWidth);
   }
 
   @override

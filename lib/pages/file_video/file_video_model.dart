@@ -1,87 +1,111 @@
-// ====================================================
-//  Страница для вопроизведения зяписанного видео
-//  Модель, содержащая дфнные и логику, не связанную с UI
-// ====================================================
 import 'dart:io';
+
+import 'package:endoscopy_ai/features/storage_system/storage_system.dart';
+import 'package:endoscopy_ai/features/video_player/player_data.dart';
+import 'package:endoscopy_ai/shared/file_choser.dart';
+import 'package:endoscopy_ai/shared/utility/create_folder.dart';
+import 'package:endoscopy_ai/shared/widget/screenshot_preview.dart';
 import 'package:flutter/foundation.dart';
 import 'package:fvp/fvp.dart';
 import 'package:image/image.dart' as img;
-import 'package:path_provider/path_provider.dart';
 import 'package:video_player/video_player.dart';
-import 'package:endoscopy_ai/features/patient/record_data.dart';
-import 'package:endoscopy_ai/shared/file_choser.dart';
-import 'package:endoscopy_ai/shared/widget/screenshot_preview.dart';
+import 'package:path/path.dart' as p;
 
 // Модель содержащая, данные и логику
 class FileVideoPlayerPageStateModel {
-  FileVideoPlayerPageStateModel(this.setState, this.recordData);
+  final PlayerData _playerData;
+  final Function setState;
 
-  final RecordData recordData;
-  final Function setState; // callback для обновить сосотояние
-  late final VideoPlayerController _controller;
-  late final Future<void> _initializeVideoPlayerFuture;
+  // Make controller nullable
+  VideoPlayerController? _controller;
   bool _isPlaying = false;
   bool showControls = false;
   bool _isValidFile = false;
+  bool _isInitialized = false;
   Duration currentPosition = Duration.zero;
   Duration totalDuration = Duration.zero;
-  final List<ScreenshotPreviewModel> _shots = []; // список миниатюр
-  late Directory _shotsDir; // директория …/screenshots
+  List<ScreenshotPreviewModel> _shots = []; // список миниатюр
+  Directory? _shotsDir; // директория …/screenshots
 
   bool get isPlaying => _isPlaying;
   bool get isValidFile => _isValidFile;
+  bool get isInitialized => _isInitialized;
   List<ScreenshotPreviewModel> get shots => _shots;
-  VideoPlayerController get controller => _controller;
+
+  // Return nullable controller
+  VideoPlayerController? get controller => _controller;
+
+  // Public future for initialization tracking
+  Future<void>? initializationFuture;
+
+  FileVideoPlayerPageStateModel(this.setState, this._playerData);
 
   void initState() {
-    _prepareDir();
-    if (FilePicker.checkFile()) {
-      _isValidFile = true;
-      _controller = VideoPlayerController.file(
-        File(FilePicker.filePath.toString()),
-      );
+    _isValidFile = true;
 
-      _initializeVideoPlayerFuture = _controller // инициализация проигрывателя
-          .initialize()
-          .then((_) {
-        setState(() {
-          totalDuration = _controller.value.duration;
-        });
-      }).catchError((error) {
-        debugPrint('Ошибка инициализации видео: $error');
-      });
-    }
+    // Save this future to track initialization
+    initializationFuture = _initializeController();
+
+    loadScreenshots();
   }
 
-  // подготовка папки с данными
-  Future<void> _prepareDir() async {
-    final base = await getApplicationDocumentsDirectory(); // path_provider
-    _shotsDir = Directory('${base.path}/screenshots');
-    if (!await _shotsDir.exists()) {
-      await _shotsDir.create(recursive: true);
+  void loadScreenshots() {
+    StorageSystem.loadScreenshots(_playerData.recordEntry);
+
+    _shots = _playerData.recordEntry.screenshots
+        .map((scr) => ScreenshotPreviewModel(scr, scr.time))
+        .toList();
+  }
+
+  Future<void> _initializeController() async {
+    try {
+      _controller = VideoPlayerController.file(File(_playerData.filePath));
+
+      await _controller!.initialize();
+
+      _isPlaying = true;
+      _controller?.play();
+
+      // 5. Setup screenshot directory
+      _shotsDir = Directory(_playerData.screenshotPath);
+
+      // 6. Update UI and mark as initialized
+      setState(() {
+        totalDuration = _controller!.value.duration;
+        _isInitialized = true;
+      });
+    } catch (e) {
+      debugPrint('Ошибка инициализации видео: $e');
+      setState(() {
+        _isValidFile = false;
+      });
     }
   }
 
   // установить время на видео
   void seekTo(Duration pos) {
-    _controller.seekTo(pos);
+    if (!_isInitialized || _controller == null) return;
+
+    _controller!.seekTo(pos);
     if (_isPlaying) {
-      togglePlayPause(); // если было включено - поставим на паузу
+      togglePlayPause();
     }
   }
 
   // сделать скриншот
   void makeScreenshot() async {
-    final width = _controller.value.size.width.toInt();
-    final height = _controller.value.size.height.toInt();
-    final controllerPosition = _controller.value.position;
+    // Ensure controller is initialized and ready
+    if (!_isInitialized || _controller == null || _shotsDir == null) return;
 
-    // Определяем вывод скриншота
-    final fileName = '${DateTime.now().millisecondsSinceEpoch}.png';
-    final filePath = '${_shotsDir.path}/$fileName';
+    final width = _controller!.value.size.width.toInt();
+    final height = _controller!.value.size.height.toInt();
+    final controllerPosition = _controller!.value.position;
+
+    final screenshotData = StorageSystem.saveScreenshot(
+        _playerData.recordEntry, controllerPosition);
 
     final screenshotVisual = ScreenshotPreviewModel(
-      filePath,
+      screenshotData,
       controllerPosition,
       state: ScreenshotPreviewState.pending,
     );
@@ -89,8 +113,7 @@ class FileVideoPlayerPageStateModel {
     _shots.add(screenshotVisual);
 
     try {
-      // Запрос и чтение данных из видеоконтроллера
-      final pixelData = await _controller.snapshot(
+      final pixelData = await _controller!.snapshot(
         width: width,
         height: height,
       );
@@ -100,68 +123,42 @@ class FileVideoPlayerPageStateModel {
         return;
       }
 
-      // Аллокация ресурсов для изображения по ее ширине и высоте
       final image = img.Image.fromBytes(
         width: width,
         height: height,
         bytes: pixelData.buffer,
-        numChannels:
-            4, // По https://pub.dev/documentation/fvp/latest/fvp/FVPControllerExtensions/snapshot.html :
+        numChannels: 4,
       );
 
-      // Дкодировать РГБ данные в пнг в изоляте из-за сложности процесса
       final pngBytes = await compute((im) => img.encodePng(im), image);
 
-      // Сохранить
-      final outFile = File(filePath);
+      final outFile = File(screenshotData.imagePath);
       await outFile.writeAsBytes(pngBytes);
 
-      // Обновить меню для скриншотов
       setState(() {
         screenshotVisual.state = ScreenshotPreviewState.good;
       });
-      print("Сохранено $filePath");
+      print("Сохранено $screenshotData");
     } catch (error) {
       setState(() {
         screenshotVisual.state = ScreenshotPreviewState.error;
       });
-
       print('ОШИБКА СОЗАДНИЯ СКРИНШОТА: $error');
     }
   }
 
   // смена состояния проигрывания
   void togglePlayPause() {
+    if (!_isInitialized || _controller == null) return;
+
     setState(() {
       _isPlaying = !_isPlaying;
-      _isPlaying ? _controller.play() : _controller.pause();
+      _isPlaying ? _controller!.play() : _controller!.pause();
     });
   }
 
   // освобождение ресурсов
   void dispose() {
-    _controller.dispose();
+    _controller?.dispose();
   }
-
-  @visibleForTesting
-  Future<void> get initializeFuture => _initializeVideoPlayerFuture ?? Future.value();
-
-  @visibleForTesting
-  set controllerForTest(VideoPlayerController controller) {
-    _controller = controller;
-    _initializeVideoPlayerFuture = controller.initialize().then((_) {
-      if (controller.value.isInitialized) {
-        currentPosition = controller.value.position;
-        totalDuration = controller.value.duration;
-      }
-    });
-  }
-
-  @visibleForTesting
-  static Future<void> prepareTestDir(Directory dir) async {
-    if (!await dir.exists()) {
-      await dir.create(recursive: true);
-    }
-  }
-
 }

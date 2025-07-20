@@ -9,29 +9,18 @@ class RecordingsPage extends StatefulWidget {
 }
 
 class _RecordingsPageState extends State<RecordingsPage> {
-  late final RecordingsPageModel _model;
+  late final _model;
+  late final _view;
 
   @override
   void initState() {
-    super.initState();
     _model = RecordingsPageModel();
-  }
-
-  void _refresh() {
-    setState(() {});
+    _view = RecordingsPageView(_model, setState);
+    super.initState();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Записи:')),
-      body: Column(
-        children: [
-          Expanded(
-            child: RecordingsPageView(model: _model, refresh: _refresh),
-          ),
-        ],
-      ),
-    );
+    return _view.build(context);
   }
 }

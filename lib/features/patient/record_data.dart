@@ -4,9 +4,10 @@ class RecordData {
   final int id;
   final DateTime time;
 
-  RecordData(
-      {required this.name,
-      required this.surname,
-      required this.id,
-      required this.time});
+  RecordData({
+    this.name = '',
+    this.surname = '',
+    required this.id,
+    required this.time,
+  });
 }

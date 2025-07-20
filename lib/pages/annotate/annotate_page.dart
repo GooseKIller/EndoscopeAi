@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' as ui;
 
+import 'package:endoscopy_ai/features/storage_system/record_entry.dart';
+import 'package:endoscopy_ai/features/storage_system/storage_system.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -9,6 +11,11 @@ import 'package:path/path.dart' as p;
 
 import 'shapes.dart';
 import 'body_map.dart';
+
+const _keyHistLst = 'hist';
+const _keyHistIdx = 'idx';
+const _keyDraft = 'draft';
+
 
 enum Tool { pen, rect, circle, move }
 class _AnnotationSnapshot {
@@ -18,12 +25,18 @@ class _AnnotationSnapshot {
 }
 
 class AnnotatePage extends StatefulWidget {
-  const AnnotatePage({super.key, required this.imagePath});
-  final String imagePath;
+  const AnnotatePage({super.key, required this.screenshotData});
+  final ScreenshotEntry screenshotData;
+
 
   @override
   State<AnnotatePage> createState() => _AnnotatePageState();
 }
+
+class _AnnotationSnapshot {
+  _AnnotationSnapshot(this.elements, this.mapSnap);
+  final List<Shape> elements;        // копия фигур
+  final BodyMapSnapshot mapSnap;     // снимок карты органов
 
 bool _mapEquals(BodyMapSnapshot a, BodyMapSnapshot b) {
   if (a.organ != b.organ) return false;
@@ -39,7 +52,125 @@ class _AnnotatePageState extends State<AnnotatePage> {
   final _globalKey = GlobalKey();
   final _imgKey = GlobalKey();
   Size _imgSize = Size.zero;
+  final _controller = TextEditingController();
+  late final ScreenshotEntry _screenshotData;
   final BodyMapController _mapCtrl = BodyMapController();
+  BodyMapSnapshot? _lastMapSnap;
+  
+
+  @override
+  void initState() {
+    super.initState();
+    _screenshotData = widget.screenshotData;
+    _mapCtrl.addListener(_onMapChanged);
+
+    // вызов отрисовки
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadAnnotations();
+      if (!mounted) return;
+      _notes = _screenshotData.annotationText;
+      _controller.text = _notes;  // Body Map: загрузка из ScreenshotEntry.location (JSON)
+      _mapCtrl.restore(_decodeLocation(_screenshotData.location));
+      setState(() {});
+    });
+  }
+
+  void _loadAnnotations() {
+    try {
+      setState(() {
+        if (!mounted) return;
+          _notes = _screenshotData.annotationText;
+          _controller.text = _notes;
+
+          final mapSnap = _decodeLocation(_screenshotData.location);
+        _mapCtrl.restore(mapSnap);   // rebuild карты
+        _lastMapSnap = mapSnap;  
+
+          // загрузить данные рисования
+          final rawJson = _screenshotData.drawingData as String;
+          if (rawJson == '') {
+            // ничего не сохранено
+            _history.clear();
+            _history.add([]);
+            _histIx = 0;
+          } else {
+            // загружаем, то что сохранено
+            final drawingJson = jsonDecode(rawJson) as Map<String, dynamic>;
+            _histIx = drawingJson[_keyHistIdx] as int;
+
+            final draftJson = drawingJson[_keyDraft] as String;
+
+            _draft = (draftJson == '') ? null : Shape.fromJson(drawingJson);
+
+            final newHist = (drawingJson[_keyHistLst] as List<dynamic>)
+                .map((x) => (x as List<dynamic>)
+                    .map((y) => Shape.fromJson(y as Map<String, dynamic>))
+                    .toList())
+                .toList();
+
+            // восстанивить историю
+            _history.clear();
+            _history.addAll(newHist);
+
+            // поставить на отрисовку
+            _elements
+              ..clear()
+              ..addAll(_history[_histIx].map((e) => e.clone()));
+          }
+        _mapHistory
+        ..clear()
+        ..addAll(List<BodyMapSnapshot>.generate(
+          _history.length,
+          (_) => BodyMapSnapshot(
+            mapSnap.organ,
+            mapSnap.markers.map((m) => BodyMarker(m.rel)).toList(),
+          ),
+        ));
+
+      // убедимся, что индекс в пределах
+      if (_histIx >= _mapHistory.length) {
+        _histIx = _mapHistory.length - 1;
+      }
+      });
+      
+    } catch (e) {
+      debugPrint('Error loading annotations: $e');
+    }
+  }
+
+  void _saveAnnotations() {
+    if (!mounted) return;
+
+    try {
+      // Обновляем данные
+      _screenshotData.annotationText = _notes;
+      _screenshotData.location = _encodeLocation();
+
+      // сохраняем осторию
+      final decodedHist =
+          (_history).map((x) => x.map((x) => x.toJson()).toList()).toList();
+      final decodedDraft = _draft?.toJson() ?? '';
+      final drawingData = {
+        _keyHistLst: decodedHist,
+        _keyHistIdx: _histIx,
+        _keyDraft: decodedDraft,
+      };
+      _screenshotData.drawingData = jsonEncode(drawingData);
+
+      // Сохраняем обратно
+      StorageSystem.updateScreenshotData(_screenshotData);
+
+      debugPrint('Annotations saved');
+    } catch (e) {
+      debugPrint('Error saving annotations: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Ошибка сохранения: $e')),
+        );
+      }
+    }
+  }
+  
 
   static const _palette = [
     Color(0xFF0072B2),
@@ -52,56 +183,65 @@ class _AnnotatePageState extends State<AnnotatePage> {
   double _strokeWidth = 3.0;
   final List<double> _availableWidths = [1.0, 3.0, 5.0, 8.0, 12.0];
 
+  void _onMapChanged() {
+  final snap = _mapCtrl.snapshot();
+  if (_mapSnapEquals(_lastMapSnap, snap)) return; 
+  _lastMapSnap = snap;
+  _commit(); 
+}
+
+  @override
+  void dispose() {
+    _mapCtrl.removeListener(_onMapChanged);
+    _saveAnnotations(); // Сохраняем перед уничтожением
+    _controller.dispose(); // Не забываем освободить контроллер
+    super.dispose();
+  }
+  BodyMapSnapshot _decodeLocation(String raw) {
+  try {
+    if (raw.isEmpty) return BodyMapSnapshot(null, []);
+    final j = jsonDecode(raw) as Map<String, dynamic>;
+    final organ = BodyPartX.fromName(j['organ'] as String?);
+    final markers = ((j['markers'] ?? []) as List)
+        .map((e) => BodyMarker.fromJson(Map<String, dynamic>.from(e)))
+        .toList();
+    return BodyMapSnapshot(organ, markers);
+  } catch (_) {
+    return BodyMapSnapshot(null, []);
+  }
+}
+
+String _encodeLocation() {
+  final data = {
+    'organ': _mapCtrl.organ?.name ?? '',
+    'markers': _mapCtrl.markers.map((m) => m.toJson()).toList(),
+  };
+  return jsonEncode(data);
+}
   final _elements = <Shape>[];
   Shape? _draft;
   String _notes = '';
   Shape? _selected;
   Offset? _lastRel;
 
-  final List<_AnnotationSnapshot> _history = [];
-  int _histIx = -1;
-
+  final _history = <List<Shape>>[[]];
+  int _histIx = 0;
+  final List<BodyMapSnapshot> _mapHistory = <BodyMapSnapshot>[];
   void _commit() {
-    _history.removeRange(_histIx + 1, _history.length);
-    _history.add(
-      _AnnotationSnapshot(
-        _elements.map((e) => e.clone()).toList(),
-        _mapCtrl.snapshot(),
-      ),
-    );
-    _histIx = _history.length - 1;
-  }
+  // режем вперёд в обоих стеках
+  _history.removeRange(_histIx + 1, _history.length);
+ _mapHistory.removeRange(_histIx + 1, _mapHistory.length);
 
+  // сохраняем фигуры (как было)
+  _history.add(_elements.map((e) => e.clone()).toList());
 
-  @override
-  void initState() {
-    super.initState();
-    _mapCtrl.addListener(_onMapChanged);
-    _commit();
-  }
-  void _onMapChanged() {
-  final snap = _mapCtrl.snapshot();
+ // сохраняем снимок Body Map
+ final mapSnap = _mapCtrl.snapshot();
+ _mapHistory.add(mapSnap);
+ _lastMapSnap = mapSnap;
 
-  // если карта не изменилась по сути — игнорируем
-  if (_history.isNotEmpty && _mapEquals(_history.last.mapSnap, snap)) return;
-
-  _commit();    // добавляем только если новое
-} 
-
-  @override
- void dispose() {
-   _mapCtrl.removeListener(_onMapChanged); 
-    super.dispose();
- }
-
- bool _sameAsLast(BodyMapSnapshot snap) {
-  if (_history.isEmpty) return false;
-  final last = _history.last.mapSnap;
-  return last.organ == snap.organ &&
-         last.markers.length == snap.markers.length;
+  _histIx = _history.length - 1;
 }
-
-
   Offset _toRel(Offset p) {
     final dx = (p.dx / _imgSize.width).clamp(0.0, 1.0);
     final dy = (p.dy / _imgSize.height).clamp(0.0, 1.0);
@@ -157,7 +297,7 @@ class _AnnotatePageState extends State<AnnotatePage> {
                               child: Stack(
                                 children: [
                                   Image.file(
-                                    File(widget.imagePath),
+                                    File(widget.screenshotData.imagePath),
                                     key: _imgKey,
                                   ),
                                   Positioned.fill(
@@ -189,16 +329,16 @@ class _AnnotatePageState extends State<AnnotatePage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  AspectRatio(                               
-                  aspectRatio: 1,
-                  child: Card(
-                  elevation: 2,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                 child: BodyMapSection(controller: _mapCtrl),
-                ),
-              ),
-                  const SizedBox(height: 12),
 
+                  AspectRatio(
+                      aspectRatio: 1,
+                      child: Card(
+                        elevation: 2,
+                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          child: BodyMapSection(controller: _mapCtrl),
+                          ),
+                          ),
+                          const SizedBox(height: 12),
                   Text(
                     'Заметки',
                     style: Theme.of(context).textTheme.titleMedium,
@@ -213,13 +353,22 @@ class _AnnotatePageState extends State<AnnotatePage> {
                       child: Padding(
                         padding: const EdgeInsets.all(8.0),
                         child: TextField(
+                          controller: _controller,
+                          textDirection: TextDirection.ltr,
                           expands: true,
                           maxLines: null,
                           decoration: const InputDecoration(
                             border: InputBorder.none,
                             hintText: 'Напишите здесь что-нибудь...',
                           ),
-                          onChanged: (val) => setState(() => _notes = val),
+                          onChanged: (val) {
+                            setState(() {
+                              _notes = val;
+                              _controller.text =
+                                  val; // Синхронизируем контроллер
+                            });
+                            _saveAnnotations();
+                          },
                         ),
                       ),
                     ),
@@ -376,29 +525,44 @@ class _AnnotatePageState extends State<AnnotatePage> {
 
   // undo / redo
   void _undo() {
-    if (_histIx <= 0) return;
-    _histIx--;
-    final snap = _history[_histIx];
+  if (_histIx > 0) {
     setState(() {
+      _histIx--;
       _elements
         ..clear()
-        ..addAll(snap.elements.map((e) => e.clone()));
-      _mapCtrl.restore(snap.mapSnap);
+        ..addAll(_history[_histIx].map((e) => e.clone()));
+     // восстановить карту меток
+     _mapCtrl.restore(_mapHistory[_histIx]);
+     _lastMapSnap = _mapHistory[_histIx];
     });
   }
+}
 
- 
-  void _redo() {
-    if (_histIx >= _history.length - 1) return;
-    _histIx++;
-    final snap = _history[_histIx];
+void _redo() {
+  if (_histIx < _history.length - 1) {
     setState(() {
+      _histIx++;
       _elements
         ..clear()
-        ..addAll(snap.elements.map((e) => e.clone()));
-      _mapCtrl.restore(snap.mapSnap);
+        ..addAll(_history[_histIx].map((e) => e.clone()));
+     _mapCtrl.restore(_mapHistory[_histIx]);
+    _lastMapSnap = _mapHistory[_histIx];
     });
   }
+}
+
+  bool _mapSnapEquals(BodyMapSnapshot? a, BodyMapSnapshot? b) {
+  if (identical(a, b)) return true;
+  if (a == null || b == null) return false;
+  if (a.organ != b.organ) return false;
+  final am = a.markers, bm = b.markers;
+  if (am.length != bm.length) return false;
+  for (var i = 0; i < am.length; i++) {
+    // координаты в 0..1, сравним с малым допуском
+    if ((am[i].rel - bm[i].rel).distance > 1e-6) return false;
+  }
+  return true;
+}
 
   // save SVG
   Future<void> _saveSvg() async {
@@ -409,7 +573,8 @@ class _AnnotatePageState extends State<AnnotatePage> {
           .toImage(pixelRatio: 1.0);
       final w = img.width, h = img.height;
 
-      final b64 = base64Encode(await File(widget.imagePath).readAsBytes());
+      final b64 = base64Encode(
+          await File(widget.screenshotData.imagePath).readAsBytes());
 
       final shapesXml = _elements
           .map((e) => e.toSvg(Size(w.toDouble(), h.toDouble())).toXmlString())
@@ -428,13 +593,14 @@ class _AnnotatePageState extends State<AnnotatePage> {
       final path = await FilePicker.platform.saveFile(
         dialogTitle: 'Save annotation',
         fileName:
-            'annotate_${p.basenameWithoutExtension(widget.imagePath)}.svg',
+            'annotate_${p.basenameWithoutExtension(widget.screenshotData.imagePath)}.svg',
         type: FileType.custom,
         allowedExtensions: ['svg'],
       );
       if (path == null) return;
-    final basePath = p.withoutExtension(path);  
-    await _mapCtrl.savePng(basePath);                            
+      await File(path).writeAsString(svg);
+      final basePath = p.withoutExtension(path);          // тот же каталог
+      await _mapCtrl.savePng(basePath); 
       if (context.mounted) {
         ScaffoldMessenger.of(
           context,

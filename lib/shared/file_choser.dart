@@ -7,8 +7,8 @@ import 'package:path/path.dart' as p;
 
 // Класс для импорта/выбора файла
 class FilePicker {
-  static String? _filePath;
-  static String? _fileName;
+  static String? _filePath = '';
+  static String? _fileName = '';
 
   static String? get filePath => _filePath;
   static String? get fileName => _fileName;
