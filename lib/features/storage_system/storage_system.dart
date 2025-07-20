@@ -166,7 +166,7 @@ class StorageSystem {
       }
     }
 
-    entries.sort((a, b) => a.data.time.compareTo(b.data.time));
+    entries.sort((a, b) => b.data.time.compareTo(a.data.time));
     return entries;
   }
 
