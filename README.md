@@ -7,10 +7,16 @@
 [![Unlicense License][license-shield]][license-url]
 
 ## Quick Start Guide (for customer)
-1. Download the latest release from the [Live Build](https://github.com/uSs3ewa/EndoscopeBETA/releases/latest).
+1. Download the latest release from the [Live Build](https://github.com/uSs3ewa/EndoscopeBETA/releases/MVPv3).
 2. Unzip or run the installer on the clinic PC.
 3. Plug in your endoscope camera and launch the app.
 4. Follow on-screen prompts to start capturing video.
+
+### SpeechToText Guide
+1. Virtual Environment
+2. Install all of requirements.txt by pip
+3. Start server by 'python speech_server.py'
+4. Run app
 
 # EndoscopeAi
 
